@@ -24,7 +24,7 @@ def main():
         # Run the application
         core_main()
         
-        except KeyboardInterrupt:
+    except KeyboardInterrupt:
         print("\nApplication interrupted by user")
         sys.exit(0)
     except Exception as e:
