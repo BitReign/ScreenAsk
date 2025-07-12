@@ -17,10 +17,15 @@ class TrayHandler:
         """Create system tray icon"""
         # Try to load the icon file, fallback to programmatic creation
         try:
-            if os.path.exists('tray_icon.png'):
-                image = Image.open('tray_icon.png')
-            elif os.path.exists('screenask_icon.png'):
-                image = Image.open('screenask_icon.png')
+            # Get the project root directory
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            tray_icon_path = os.path.join(project_root, 'assets', 'tray_icon.png')
+            screenask_icon_path = os.path.join(project_root, 'assets', 'screenask_icon.png')
+            
+            if os.path.exists(tray_icon_path):
+                image = Image.open(tray_icon_path)
+            elif os.path.exists(screenask_icon_path):
+                image = Image.open(screenask_icon_path)
                 image = image.resize((64, 64), Image.Resampling.LANCZOS)
             else:
                 # Fallback: create a simple icon programmatically

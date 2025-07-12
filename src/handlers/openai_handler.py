@@ -3,7 +3,7 @@ import base64
 import json
 import hashlib
 import time
-from config import Config
+from src.core.config import Config
 
 class OpenAIHandler:
     def __init__(self):

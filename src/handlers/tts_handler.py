@@ -2,7 +2,7 @@ import pyttsx3
 import threading
 import os
 import tempfile
-from config import Config
+from src.core.config import Config
 
 # Try to import gTTS and pygame for online TTS
 try:

@@ -2,9 +2,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import threading
 import time
-from config import Config
-from openai_handler import OpenAIHandler
-from tts_handler import TTSHandler
+from src.core.config import Config
+from src.handlers.openai_handler import OpenAIHandler
+from src.handlers.tts_handler import TTSHandler
 
 class MainGUI:
     def __init__(self, main_app):

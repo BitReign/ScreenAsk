@@ -1,7 +1,7 @@
 import keyboard
 import threading
 import time
-from config import Config
+from src.core.config import Config
 
 class HotkeyHandler:
     def __init__(self, main_app):

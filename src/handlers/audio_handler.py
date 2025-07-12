@@ -19,7 +19,7 @@ except ImportError:
 import threading
 import time
 import os
-from config import Config
+from src.core.config import Config
 
 class AudioHandler:
     def __init__(self):
