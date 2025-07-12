@@ -44,6 +44,13 @@ ScreenAsk/
 - 📱 **System Tray**: Background operation with system tray icon
 - ⚙️ **Configurable**: Customizable hotkeys, audio settings, and more
 
+## Application Interface
+
+### Main Window
+![ScreenAsk Main Window](../assets/screenshots/main-window.png)
+
+The main window provides a chat-style interface with your conversation history, status information, and quick access to settings and controls.
+
 ## Requirements
 
 - Windows 10/11
@@ -125,6 +132,15 @@ This project uses a virtual environment to:
 3. **Enter your API key** in the **OpenAI Configuration** section
 4. **Configure your preferences** using the settings below
 5. **Click Save**
+
+### Settings Interface
+
+The settings window features a tabbed interface with 5 organized sections:
+
+![ScreenAsk Settings Interface](../assets/screenshots/settings-tabs.png)
+
+#### API & Model Configuration
+![ScreenAsk API Settings](../assets/screenshots/settings-api.png)
 
 ### OpenAI Configuration
 - **API Key**: Your OpenAI API key

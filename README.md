@@ -21,6 +21,14 @@ ScreenAsk is a Windows background application that captures screenshots and anal
 - 🎯 **Circle Overlay** for visual feedback (Experimental)
 - 📱 **System Tray** operation
 
+## Screenshots
+
+### Main Application Window
+![ScreenAsk Main Window](assets/screenshots/main-window.png)
+
+### Settings Interface
+![ScreenAsk Settings](assets/screenshots/settings-tabs.png)
+
 ## Project Structure
 
 ```
