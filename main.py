@@ -12,6 +12,8 @@ from screenshot_handler import ScreenshotHandler
 from audio_handler import AudioHandler
 from openai_handler import OpenAIHandler
 from tts_handler import TTSHandler
+from poi_handler import POIHandler
+from circle_overlay import CircleOverlay
 
 class ScreenAskApp:
     def __init__(self):
@@ -23,6 +25,8 @@ class ScreenAskApp:
         self.audio_handler = AudioHandler()
         self.openai_handler = OpenAIHandler()
         self.tts_handler = TTSHandler()
+        self.poi_handler = POIHandler()
+        self.circle_overlay = CircleOverlay(self.config)
         
         # Initialize UI components
         self.main_gui = MainGUI(self)
@@ -223,19 +227,131 @@ class ScreenAskApp:
         
         print(f"OpenAI response: {response}")
         
-        # Speak the response
+        # Parse structured response (always enabled)
+        structured_data, error = self.openai_handler.parse_structured_response(response)
+        
+        if error:
+            print(f"Error parsing structured response: {error}")
+            print(f"Raw response: {response}")
+            self.tray_handler.notify("ScreenAsk", "Error parsing AI response")
+            if self.main_gui:
+                self.main_gui.set_status_ready()
+            return
+        
+        # Extract structured data
+        poi_x = structured_data['x']
+        poi_y = structured_data['y']
+        poi_radius = structured_data['r']
+        text_response = structured_data['tx']
+        
+        print(f"Structured response - POI: ({poi_x}, {poi_y}), Radius: {poi_radius}")
+        print(f"Text to speak: {text_response}")
+        
+        # Add screen resolution info for debugging
+        if self.main_gui and self.main_gui.root:
+            try:
+                screen_width = self.main_gui.root.winfo_screenwidth()
+                screen_height = self.main_gui.root.winfo_screenheight()
+                print(f"Screen resolution: {screen_width}x{screen_height}")
+                print(f"POI relative position: {poi_x/screen_width:.1%} from left, {poi_y/screen_height:.1%} from top")
+                
+                # Verify coordinates are within screen bounds
+                if poi_x < 0 or poi_x > screen_width or poi_y < 0 or poi_y > screen_height:
+                    print(f"⚠️  WARNING: POI coordinates ({poi_x}, {poi_y}) are outside screen bounds!")
+                else:
+                    print(f"✅ POI coordinates are within screen bounds")
+                
+                # Give context about screen regions
+                region_x = "left" if poi_x < screen_width/3 else ("center" if poi_x < 2*screen_width/3 else "right")
+                region_y = "top" if poi_y < screen_height/3 else ("middle" if poi_y < 2*screen_height/3 else "bottom")
+                print(f"📍 POI is in {region_y}-{region_x} region of screen")
+                
+            except:
+                pass
+        
+        # Store POI data using POI handler
+        self.poi_handler.set_current_poi(poi_x, poi_y, poi_radius, text_response)
+        
+        # Show circle overlay if enabled
+        if self.config.get_circle_overlay_enabled():
+            print(f"Showing circle overlay at ({poi_x}, {poi_y}) with radius {poi_radius}")
+            self.circle_overlay.show_circle(poi_x, poi_y, poi_radius)
+        
+        # Speak only the text portion
+        self._speak_response(text_response)
+            
+        print("Process completed successfully!")
+    
+    def _speak_response(self, text):
+        """Speak the response text"""
         print("Speaking response...")
         if self.main_gui:
             self.main_gui.set_status_speaking()
         self.tray_handler.notify("ScreenAsk", "Speaking response...")
         
-        self.tts_handler.speak(response, blocking=False)
+        self.tts_handler.speak(text, blocking=False)
         
         # Set status back to ready after a short delay
         import time
         threading.Timer(2.0, lambda: self.main_gui.set_status_ready() if self.main_gui else None).start()
+    
+    def get_current_poi_data(self):
+        """Get the current point of interest data"""
+        return self.poi_handler.get_current_poi()
+    
+    def get_poi_in_user_format(self):
+        """Get POI data in user's requested format: x:10,y:50,r:300,tx="text" """
+        return self.poi_handler.export_poi_data('simple')
+    
+    def get_poi_as_json(self):
+        """Get POI data as JSON"""
+        return self.poi_handler.export_poi_data('json')
+    
+    def test_circle_at_coordinates(self, x, y, radius=100):
+        """Test circle overlay at specific coordinates (for debugging)"""
+        if self.circle_overlay:
+            print(f"Testing circle overlay at ({x}, {y}) with radius {radius}")
+            self.circle_overlay.show_circle(x, y, radius)
+        else:
+            print("Circle overlay not available")
+
+    def test_coordinate_accuracy(self):
+        """Test coordinate accuracy by showing multiple circles at different locations"""
+        if not self.circle_overlay:
+            print("Circle overlay not available")
+            return
         
-        print("Process completed successfully!")
+        # Test coordinates for common taskbar positions
+        screen_width = 2560  # Your screen width
+        screen_height = 1440  # Your screen height
+        
+        # Test different taskbar positions
+        test_positions = [
+            (200, 1400, 30, "Far left of taskbar"),
+            (640, 1400, 30, "Left-center of taskbar"),
+            (1280, 1400, 30, "Center of taskbar"),
+            (1920, 1400, 30, "Right-center of taskbar"),
+            (2400, 1400, 30, "Far right of taskbar"),
+        ]
+        
+        print("Testing coordinate accuracy at different taskbar positions:")
+        for x, y, radius, description in test_positions:
+            print(f"  Testing {description}: ({x}, {y}) with radius {radius}")
+            input("Press Enter to show circle...")
+            self.circle_overlay.show_circle(x, y, radius)
+            
+    def clear_coordinate_cache(self):
+        """Clear cached coordinates to force fresh detection"""
+        if hasattr(self.openai_handler, 'coordinate_cache'):
+            self.openai_handler.coordinate_cache.clear()
+            print("Coordinate cache cleared - next request will generate fresh coordinates")
+        else:
+            print("No coordinate cache found")
+    
+    def hide_current_circle(self):
+        """Hide current circle overlay"""
+        if self.circle_overlay:
+            self.circle_overlay.hide_circle()
     
     def handle_stop_speaking(self):
         """Handle stop speaking hotkey - stop TTS immediately"""
@@ -297,6 +413,9 @@ class ScreenAskApp:
         
         if self.tts_handler:
             self.tts_handler.stop()
+        
+        if self.circle_overlay:
+            self.circle_overlay.hide_circle()
         
         if self.main_gui and self.main_gui.root:
             self.main_gui.root.quit()

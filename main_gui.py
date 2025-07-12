@@ -147,23 +147,67 @@ class MainGUI:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
     def show_settings(self):
-        """Show settings window"""
+        """Show settings window with tabbed interface"""
         if self.settings_window and self.settings_window.winfo_exists():
             self.settings_window.lift()
             return
             
         self.settings_window = tk.Toplevel(self.root)
-        self.settings_window.title("Settings")
-        self.settings_window.geometry("600x750")
+        self.settings_window.title("ScreenAsk Settings")
+        self.settings_window.geometry("750x650")
         self.settings_window.resizable(True, True)
         
         # Make it modal
         self.settings_window.transient(self.root)
         self.settings_window.grab_set()
         
-        # Create canvas and scrollbar for scrolling
-        canvas = tk.Canvas(self.settings_window)
-        scrollbar = ttk.Scrollbar(self.settings_window, orient="vertical", command=canvas.yview)
+        # Create main frame
+        main_frame = ttk.Frame(self.settings_window, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Create notebook for tabs
+        notebook = ttk.Notebook(main_frame)
+        notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        # Create tabs
+        self._create_api_tab(notebook)
+        self._create_controls_tab(notebook)
+        self._create_audio_tab(notebook)
+        self._create_visual_tab(notebook)
+        self._create_prompts_tab(notebook)
+        
+        # Create bottom button frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        # Add test buttons on left
+        test_frame = ttk.Frame(button_frame)
+        test_frame.pack(side=tk.LEFT)
+        
+        test_api_btn = ttk.Button(test_frame, text="Test API", command=self.test_api)
+        test_api_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        test_capture_btn = ttk.Button(test_frame, text="Test Capture", command=self.test_capture)
+        test_capture_btn.pack(side=tk.LEFT)
+        
+        # Add main buttons on right
+        main_buttons_frame = ttk.Frame(button_frame)
+        main_buttons_frame.pack(side=tk.RIGHT)
+        
+        cancel_btn = ttk.Button(main_buttons_frame, text="Cancel", command=self.settings_window.destroy)
+        cancel_btn.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        save_btn = ttk.Button(main_buttons_frame, text="Save", command=self.save_settings)
+        save_btn.pack(side=tk.RIGHT)
+    
+    def _create_api_tab(self, notebook):
+        """Create API & Model configuration tab"""
+        tab = ttk.Frame(notebook)
+        notebook.add(tab, text="API & Model")
+        
+        # Create scrollable frame for this tab
+        canvas = tk.Canvas(tab)
+        scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
         
         scrollable_frame.bind(
@@ -174,37 +218,60 @@ class MainGUI:
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         
-        # Settings frame inside scrollable area
-        settings_frame = ttk.Frame(scrollable_frame, padding="10")
-        settings_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Pack scrollable components
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
         
-        self.settings_window.columnconfigure(0, weight=1)
-        self.settings_window.rowconfigure(0, weight=1)
-        settings_frame.columnconfigure(1, weight=1)
-        
-        row = 0
+        # Settings content
+        content_frame = ttk.Frame(scrollable_frame, padding="10")
+        content_frame.pack(fill=tk.BOTH, expand=True)
+        content_frame.columnconfigure(1, weight=1)
         
         # OpenAI Settings
-        openai_frame = ttk.LabelFrame(settings_frame, text="OpenAI Configuration", padding="10")
-        openai_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        openai_frame = ttk.LabelFrame(content_frame, text="OpenAI Configuration", padding="10")
+        openai_frame.pack(fill=tk.X, pady=(0, 20))
         openai_frame.columnconfigure(1, weight=1)
         
         ttk.Label(openai_frame, text="API Key:").grid(row=0, column=0, sticky=tk.W)
-        self.api_key_entry = ttk.Entry(openai_frame, show="*", width=40)
+        self.api_key_entry = ttk.Entry(openai_frame, show="*", width=20)
         self.api_key_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
         self.api_key_entry.insert(0, self.config.get_openai_key())
         
-        ttk.Label(openai_frame, text="Model:").grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        ttk.Label(openai_frame, text="Model:").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
         self.model_var = tk.StringVar(value=self.config.get('OpenAI', 'model', 'gpt-4o'))
         model_combo = ttk.Combobox(openai_frame, textvariable=self.model_var, 
                                   values=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"])
-        model_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        model_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(10, 0))
         
-        row += 1
+        ttk.Label(openai_frame, text="Temperature:").grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        self.temperature_var = tk.DoubleVar(value=float(self.config.get('OpenAI', 'temperature', '0.1')))
+        temperature_scale = ttk.Scale(openai_frame, from_=0.0, to=2.0, orient=tk.HORIZONTAL, 
+                                    variable=self.temperature_var, length=200)
+        temperature_scale.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(10, 0))
+        
+        # Temperature info label
+        temp_info_label = ttk.Label(openai_frame, text="Lower values (0.1-0.3) for consistent coordinates, higher for creative responses", 
+                                   font=('Arial', 8, 'italic'))
+        temp_info_label.grid(row=3, column=0, columnspan=2, pady=(5, 0))
+        
+        # Enable mouse wheel scrolling for this tab
+        def _on_mousewheel_api(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel_api)
+    
+    def _create_controls_tab(self, notebook):
+        """Create Controls configuration tab"""
+        tab = ttk.Frame(notebook)
+        notebook.add(tab, text="Controls")
+        
+        # Settings content
+        content_frame = ttk.Frame(tab, padding="20")
+        content_frame.pack(fill=tk.BOTH, expand=True)
+        content_frame.columnconfigure(1, weight=1)
         
         # Hotkey Settings
-        hotkey_frame = ttk.LabelFrame(settings_frame, text="Hotkey Configuration", padding="10")
-        hotkey_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        hotkey_frame = ttk.LabelFrame(content_frame, text="Hotkey Configuration", padding="10")
+        hotkey_frame.pack(fill=tk.X, pady=(0, 20))
         hotkey_frame.columnconfigure(1, weight=1)
         
         ttk.Label(hotkey_frame, text="Record Hotkey:").grid(row=0, column=0, sticky=tk.W)
@@ -213,17 +280,42 @@ class MainGUI:
                                    values=["ctrl+shift+s", "ctrl+alt+s", "ctrl+shift+a", "alt+shift+s"])
         hotkey_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
         
-        ttk.Label(hotkey_frame, text="Stop Speaking Hotkey:").grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        ttk.Label(hotkey_frame, text="Stop Speaking Hotkey:").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
         self.stop_hotkey_var = tk.StringVar(value=self.config.get_stop_speaking_hotkey())
         stop_hotkey_combo = ttk.Combobox(hotkey_frame, textvariable=self.stop_hotkey_var,
                                         values=["ctrl+shift+x", "ctrl+alt+x", "ctrl+shift+z", "alt+shift+x"])
-        stop_hotkey_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        stop_hotkey_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(10, 0))
+    
+    def _create_audio_tab(self, notebook):
+        """Create Audio & Speech configuration tab"""
+        tab = ttk.Frame(notebook)
+        notebook.add(tab, text="Audio & Speech")
         
-        row += 1
+        # Create scrollable frame for this tab
+        canvas = tk.Canvas(tab)
+        scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack scrollable components
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Settings content
+        content_frame = ttk.Frame(scrollable_frame, padding="10")
+        content_frame.pack(fill=tk.BOTH, expand=True)
+        content_frame.columnconfigure(1, weight=1)
         
         # Audio Settings
-        audio_frame = ttk.LabelFrame(settings_frame, text="Audio Configuration", padding="10")
-        audio_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        audio_frame = ttk.LabelFrame(content_frame, text="Audio Configuration", padding="10")
+        audio_frame.pack(fill=tk.X, pady=(0, 20))
         audio_frame.columnconfigure(1, weight=1)
         
         # Enable/Disable audio recording
@@ -269,11 +361,9 @@ class MainGUI:
         transcription_combo.bind('<<ComboboxSelected>>', on_transcription_change)
         transcription_combo.configure(values=["Google Speech Recognition", "OpenAI Whisper"])
         
-        row += 1
-        
         # TTS Settings
-        tts_frame = ttk.LabelFrame(settings_frame, text="Text-to-Speech", padding="10")
-        tts_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        tts_frame = ttk.LabelFrame(content_frame, text="Text-to-Speech", padding="10")
+        tts_frame.pack(fill=tk.X, pady=(0, 20))
         tts_frame.columnconfigure(1, weight=1)
         
         ttk.Label(tts_frame, text="Speech Rate:").grid(row=0, column=0, sticky=tk.W)
@@ -281,61 +371,209 @@ class MainGUI:
         rate_scale = ttk.Scale(tts_frame, from_=50, to=400, orient=tk.HORIZONTAL, variable=self.rate_var)
         rate_scale.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
         
-        ttk.Label(tts_frame, text="Volume:").grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        ttk.Label(tts_frame, text="Volume:").grid(row=1, column=0, sticky=tk.W, pady=(10, 0))
         self.volume_var = tk.StringVar(value=self.config.get('TTS', 'volume', '0.8'))
         volume_scale = ttk.Scale(tts_frame, from_=0.0, to=1.0, orient=tk.HORIZONTAL, variable=self.volume_var)
-        volume_scale.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        volume_scale.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(10, 0))
         
-        row += 1
+        ttk.Label(tts_frame, text="TTS Engine:").grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        self.tts_engine_var = tk.StringVar(value=self.config.get_tts_engine())
+        tts_engine_combo = ttk.Combobox(tts_frame, textvariable=self.tts_engine_var,
+                                       values=["auto", "local", "google"], state="readonly")
+        tts_engine_combo.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(10, 0))
         
-        # Prompt Settings
-        prompt_frame = ttk.LabelFrame(settings_frame, text="Prompt Configuration", padding="10")
-        prompt_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
-        prompt_frame.columnconfigure(1, weight=1)
+        # Add info label for TTS engine
+        info_tts_label = ttk.Label(tts_frame, text="Auto: Google TTS for non-English, Local for English", 
+                                   font=('Arial', 8, 'italic'))
+        info_tts_label.grid(row=3, column=0, columnspan=2, pady=(5, 0))
         
-        ttk.Label(prompt_frame, text="System Prompt:").grid(row=0, column=0, sticky=(tk.W, tk.N), pady=(5, 0))
-        self.system_prompt_text = tk.Text(prompt_frame, height=3, wrap=tk.WORD)
-        self.system_prompt_text.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
-        self.system_prompt_text.insert(tk.END, self.config.get('Prompts', 'system_prompt', 
-                                                             'You are a helpful AI assistant that analyzes screenshots and provides clear, concise answers.'))
+        # Enable mouse wheel scrolling for this tab
+        def _on_mousewheel_audio(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel_audio)
+    
+    def _create_visual_tab(self, notebook):
+        """Create Visual Features configuration tab"""
+        tab = ttk.Frame(notebook)
+        notebook.add(tab, text="Visual Features")
         
-        ttk.Label(prompt_frame, text="Prepend Prompt:").grid(row=1, column=0, sticky=(tk.W, tk.N), pady=(5, 0))
-        self.prepend_prompt_text = tk.Text(prompt_frame, height=2, wrap=tk.WORD)
-        self.prepend_prompt_text.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
-        self.prepend_prompt_text.insert(tk.END, self.config.get('Prompts', 'prepend_prompt', ''))
+        # Create scrollable frame for this tab
+        canvas = tk.Canvas(tab)
+        scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
         
-        ttk.Label(prompt_frame, text="Append Prompt:").grid(row=2, column=0, sticky=(tk.W, tk.N), pady=(5, 0))
-        self.append_prompt_text = tk.Text(prompt_frame, height=2, wrap=tk.WORD)
-        self.append_prompt_text.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
-        self.append_prompt_text.insert(tk.END, self.config.get('Prompts', 'append_prompt', 
-                                                             'Please be specific and helpful in your response.'))
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
         
-        row += 1
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
         
-        # Buttons
-        button_frame = ttk.Frame(settings_frame)
-        button_frame.grid(row=row, column=0, columnspan=2, pady=(20, 0))
-        
-        save_btn = ttk.Button(button_frame, text="Save", command=self.save_settings)
-        save_btn.grid(row=0, column=0, padx=(0, 10))
-        
-        cancel_btn = ttk.Button(button_frame, text="Cancel", command=self.settings_window.destroy)
-        cancel_btn.grid(row=0, column=1)
-        
-        # Pack canvas and scrollbar
+        # Pack scrollable components
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-        # Enable mouse wheel scrolling
-        def _on_mousewheel(event):
+        # Settings content
+        content_frame = ttk.Frame(scrollable_frame, padding="10")
+        content_frame.pack(fill=tk.BOTH, expand=True)
+        content_frame.columnconfigure(1, weight=1)
+        
+        # Response Settings
+        response_frame = ttk.LabelFrame(content_frame, text="Response Configuration", padding="10")
+        response_frame.pack(fill=tk.X, pady=(0, 20))
+        response_frame.columnconfigure(1, weight=1)
+        
+        # Info label for structured response (always enabled now)
+        info_structured_label = ttk.Label(response_frame, 
+                                        text="ScreenAsk uses structured responses with point of interest coordinates\nfor precise element detection and visual feedback", 
+                                        font=('Arial', 9, 'italic'))
+        info_structured_label.grid(row=0, column=0, columnspan=2, pady=(0, 10))
+        
+        # Example format
+        example_label = ttk.Label(response_frame, text="Format: {\"x\": 150, \"y\": 200, \"r\": 100, \"tx\": \"Element description\"}", 
+                                font=('Arial', 8, 'italic'), foreground="gray")
+        example_label.grid(row=1, column=0, columnspan=2, pady=(0, 0))
+        
+        # Circle Overlay Settings
+        overlay_frame = ttk.LabelFrame(content_frame, text="Circle Overlay Configuration (Experimental)", padding="10")
+        overlay_frame.pack(fill=tk.X, pady=(0, 20))
+        overlay_frame.columnconfigure(1, weight=1)
+        
+        # Enable/Disable circle overlay
+        self.circle_overlay_enabled_var = tk.BooleanVar(value=self.config.get_circle_overlay_enabled())
+        overlay_enabled_check = ttk.Checkbutton(overlay_frame, text="Enable circle overlay at POI location (Experimental)", 
+                                               variable=self.circle_overlay_enabled_var)
+        overlay_enabled_check.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 15))
+        
+        # Color selection
+        ttk.Label(overlay_frame, text="Circle Color:").grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        self.circle_color_var = tk.StringVar(value=self.config.get_circle_overlay_color())
+        color_frame = ttk.Frame(overlay_frame)
+        color_frame.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        
+        color_entry = ttk.Entry(color_frame, textvariable=self.circle_color_var, width=10)
+        color_entry.grid(row=0, column=0, sticky=tk.W)
+        
+        # Color preset buttons
+        color_presets = [
+            ("#00FF00", "Green"),
+            ("#FF0000", "Red"),
+            ("#0000FF", "Blue"),
+            ("#FFFF00", "Yellow"),
+            ("#FF00FF", "Magenta"),
+            ("#00FFFF", "Cyan")
+        ]
+        
+        for i, (color, name) in enumerate(color_presets):
+            btn = ttk.Button(color_frame, text=name, width=8,
+                           command=lambda c=color: self.circle_color_var.set(c))
+            btn.grid(row=0, column=i+1, padx=(5, 0))
+        
+        # Alpha (transparency)
+        ttk.Label(overlay_frame, text="Transparency:").grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        self.circle_alpha_var = tk.DoubleVar(value=self.config.get_circle_overlay_alpha())
+        alpha_scale = ttk.Scale(overlay_frame, from_=0.1, to=1.0, orient=tk.HORIZONTAL, 
+                               variable=self.circle_alpha_var, length=200)
+        alpha_scale.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(10, 0))
+        
+        # Duration
+        ttk.Label(overlay_frame, text="Duration (seconds):").grid(row=3, column=0, sticky=tk.W, pady=(10, 0))
+        self.circle_duration_var = tk.DoubleVar(value=self.config.get_circle_overlay_duration())
+        duration_scale = ttk.Scale(overlay_frame, from_=1.0, to=10.0, orient=tk.HORIZONTAL, 
+                                  variable=self.circle_duration_var, length=200)
+        duration_scale.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(10, 0))
+        
+        # Animation type
+        ttk.Label(overlay_frame, text="Animation:").grid(row=4, column=0, sticky=tk.W, pady=(10, 0))
+        self.circle_animation_var = tk.StringVar(value=self.config.get_circle_overlay_animation())
+        animation_combo = ttk.Combobox(overlay_frame, textvariable=self.circle_animation_var,
+                                      values=["pulse", "fade", "grow", "static"], state="readonly")
+        animation_combo.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(10, 0))
+        
+        # Info label for circle overlay
+        info_overlay_label = ttk.Label(overlay_frame, 
+                                      text="Shows a colored circle at the point of interest while AI speaks", 
+                                      font=('Arial', 8, 'italic'))
+        info_overlay_label.grid(row=5, column=0, columnspan=2, pady=(10, 5))
+        
+        # Debug coordinates option
+        self.debug_coords_var = tk.BooleanVar(value=self.config.get_circle_overlay_debug_coords())
+        debug_coords_check = ttk.Checkbutton(overlay_frame, text="Show coordinates for debugging", 
+                                           variable=self.debug_coords_var)
+        debug_coords_check.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        
+        # Enable mouse wheel scrolling for this tab
+        def _on_mousewheel_visual(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        canvas.bind_all("<MouseWheel>", _on_mousewheel_visual)
+    
+    def _create_prompts_tab(self, notebook):
+        """Create Prompts configuration tab"""
+        tab = ttk.Frame(notebook)
+        notebook.add(tab, text="Prompts")
+        
+        # Create scrollable frame for this tab
+        canvas = tk.Canvas(tab)
+        scrollbar = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack scrollable components
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Settings content
+        content_frame = ttk.Frame(scrollable_frame, padding="10")
+        content_frame.pack(fill=tk.BOTH, expand=True)
+        content_frame.columnconfigure(1, weight=1)
+        
+        # Prompt Settings
+        prompt_frame = ttk.LabelFrame(content_frame, text="Prompt Configuration", padding="10")
+        prompt_frame.pack(fill=tk.X, pady=(0, 20))
+        prompt_frame.columnconfigure(1, weight=1)
+        
+        ttk.Label(prompt_frame, text="System Prompt:").grid(row=0, column=0, sticky=(tk.W, tk.N), pady=(0, 5))
+        self.system_prompt_text = tk.Text(prompt_frame, height=4, wrap=tk.WORD)
+        self.system_prompt_text.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(0, 10))
+        self.system_prompt_text.insert(tk.END, self.config.get('Prompts', 'system_prompt', 
+                                                             'You are a helpful AI assistant that analyzes screenshots and provides clear, concise answers.'))
+        
+        ttk.Label(prompt_frame, text="Prepend Prompt:").grid(row=1, column=0, sticky=(tk.W, tk.N), pady=(0, 5))
+        self.prepend_prompt_text = tk.Text(prompt_frame, height=3, wrap=tk.WORD)
+        self.prepend_prompt_text.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(0, 10))
+        self.prepend_prompt_text.insert(tk.END, self.config.get('Prompts', 'prepend_prompt', ''))
+        
+        ttk.Label(prompt_frame, text="Append Prompt:").grid(row=2, column=0, sticky=(tk.W, tk.N), pady=(0, 5))
+        self.append_prompt_text = tk.Text(prompt_frame, height=3, wrap=tk.WORD)
+        self.append_prompt_text.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(0, 0))
+        self.append_prompt_text.insert(tk.END, self.config.get('Prompts', 'append_prompt', 
+                                                             'Please be specific and helpful in your response.'))
+        
+        # Help text
+        help_label = ttk.Label(prompt_frame, 
+                              text="System: Base AI behavior • Prepend: Added before user questions • Append: Added after user questions", 
+                              font=('Arial', 8, 'italic'), foreground="gray")
+        help_label.grid(row=3, column=0, columnspan=2, pady=(10, 0))
+        
+        # Enable mouse wheel scrolling for this tab
+        def _on_mousewheel_prompts(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel_prompts)
         
     def save_settings(self):
         """Save settings to configuration"""
         # Save OpenAI settings
         self.config.set_openai_key(self.api_key_entry.get())
         self.config.set('OpenAI', 'model', self.model_var.get())
+        self.config.set('OpenAI', 'temperature', str(self.temperature_var.get()))
         
         # Save hotkeys
         self.config.set_hotkey(self.hotkey_var.get())
@@ -349,6 +587,18 @@ class MainGUI:
         # Save TTS settings
         self.config.set('TTS', 'rate', self.rate_var.get())
         self.config.set('TTS', 'volume', self.volume_var.get())
+        self.config.set_tts_engine(self.tts_engine_var.get())
+        
+        # Save response settings (structured format is always enabled now)
+        self.config.set_structured_format_enabled(True)
+        
+        # Save circle overlay settings
+        self.config.set_circle_overlay_enabled(self.circle_overlay_enabled_var.get())
+        self.config.set_circle_overlay_color(self.circle_color_var.get())
+        self.config.set_circle_overlay_alpha(self.circle_alpha_var.get())
+        self.config.set_circle_overlay_duration(self.circle_duration_var.get())
+        self.config.set_circle_overlay_animation(self.circle_animation_var.get())
+        self.config.set_circle_overlay_debug_coords(self.debug_coords_var.get())
         
         # Save prompt settings
         self.config.set('Prompts', 'system_prompt', self.system_prompt_text.get('1.0', tk.END).strip())

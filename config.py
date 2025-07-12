@@ -25,7 +25,8 @@ class Config:
         self.config['OpenAI'] = {
             'api_key': '',
             'model': 'gpt-4o',
-            'max_tokens': '1000'
+            'max_tokens': '1000',
+            'temperature': '0.1'  # Low temperature for consistent coordinate responses
         }
         
         self.config['Audio'] = {
@@ -36,7 +37,21 @@ class Config:
         
         self.config['TTS'] = {
             'rate': '200',
-            'volume': '0.8'
+            'volume': '0.8',
+            'engine': 'auto'
+        }
+        
+        self.config['Response'] = {
+            'structured_format': 'true'
+        }
+        
+        self.config['CircleOverlay'] = {
+            'enabled': 'true',
+            'color': '#00FF00',
+            'alpha': '0.7',
+            'duration': '4.0',
+            'animation': 'pulse',
+            'debug_coords': 'false'
         }
         
         self.config['Prompts'] = {
@@ -93,4 +108,68 @@ class Config:
     
     def set_audio_recording_enabled(self, enabled):
         """Set whether audio recording is enabled"""
-        self.set('Audio', 'enable_recording', 'true' if enabled else 'false') 
+        self.set('Audio', 'enable_recording', 'true' if enabled else 'false')
+    
+    def get_tts_engine(self):
+        """Get TTS engine preference"""
+        return self.get('TTS', 'engine', 'auto')
+    
+    def set_tts_engine(self, engine):
+        """Set TTS engine preference"""
+        self.set('TTS', 'engine', engine)
+    
+    def get_structured_format_enabled(self):
+        """Get structured format setting"""
+        return self.get('Response', 'structured_format', 'false').lower() == 'true'
+    
+    def set_structured_format_enabled(self, enabled):
+        """Set structured format setting"""
+        self.set('Response', 'structured_format', str(enabled).lower())
+    
+    def get_circle_overlay_enabled(self):
+        """Get circle overlay enabled setting"""
+        return self.get('CircleOverlay', 'enabled', 'true').lower() == 'true'
+    
+    def set_circle_overlay_enabled(self, enabled):
+        """Set circle overlay enabled setting"""
+        self.set('CircleOverlay', 'enabled', str(enabled).lower())
+    
+    def get_circle_overlay_color(self):
+        """Get circle overlay color"""
+        return self.get('CircleOverlay', 'color', '#00FF00')
+    
+    def set_circle_overlay_color(self, color):
+        """Set circle overlay color"""
+        self.set('CircleOverlay', 'color', color)
+    
+    def get_circle_overlay_alpha(self):
+        """Get circle overlay alpha (transparency)"""
+        return float(self.get('CircleOverlay', 'alpha', '0.5'))
+    
+    def set_circle_overlay_alpha(self, alpha):
+        """Set circle overlay alpha (transparency)"""
+        self.set('CircleOverlay', 'alpha', str(alpha))
+    
+    def get_circle_overlay_duration(self):
+        """Get circle overlay duration"""
+        return float(self.get('CircleOverlay', 'duration', '3.0'))
+    
+    def set_circle_overlay_duration(self, duration):
+        """Set circle overlay duration"""
+        self.set('CircleOverlay', 'duration', str(duration))
+    
+    def get_circle_overlay_animation(self):
+        """Get circle overlay animation type"""
+        return self.get('CircleOverlay', 'animation', 'pulse')
+    
+    def set_circle_overlay_animation(self, animation):
+        """Set circle overlay animation type"""
+        self.set('CircleOverlay', 'animation', animation)
+    
+    def get_circle_overlay_debug_coords(self):
+        """Get circle overlay debug coordinates setting"""
+        return self.get('CircleOverlay', 'debug_coords', 'false').lower() == 'true'
+    
+    def set_circle_overlay_debug_coords(self, enabled):
+        """Set circle overlay debug coordinates setting"""
+        self.set('CircleOverlay', 'debug_coords', str(enabled).lower()) 

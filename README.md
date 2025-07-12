@@ -1,6 +1,6 @@
 # ScreenAsk - AI-Powered Screen Analyzer
 
-ScreenAsk is a Windows background application that captures screenshots and analyzes them using OpenAI's GPT-4 Vision API, combined with voice input and text-to-speech responses.
+ScreenAsk is a Windows background application that captures screenshots and analyzes them using OpenAI's GPT-4 Vision API, combined with voice input and text-to-speech responses. Features structured response format with point-of-interest coordinates for advanced integrations and visual feedback.
 
 ## Features
 
@@ -8,6 +8,8 @@ ScreenAsk is a Windows background application that captures screenshots and anal
 - 🎤 **Voice Input**: Record and transcribe your questions using speech-to-text
 - 🤖 **AI Analysis**: Analyze screenshots with OpenAI GPT-4 Vision
 - 🔊 **Text-to-Speech**: Hear responses spoken aloud
+- 📍 **Structured Responses**: Always returns POI coordinates and data in JSON format for integrations
+- 🎯 **Circle Overlay**: Visual feedback with animated circles at points of interest (Experimental)
 - 📱 **System Tray**: Background operation with system tray icon
 - ⚙️ **Configurable**: Customizable hotkeys, audio settings, and more
 
@@ -85,22 +87,48 @@ This project uses a virtual environment to:
 
 ## Configuration
 
-### OpenAI API Key
+### Initial Setup
 
-1. Get your OpenAI API key from [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Open ScreenAsk and go to **Settings**
-3. Enter your API key in the **OpenAI Configuration** section
-4. Click **Save**
+1. **Get your OpenAI API key** from [OpenAI Platform](https://platform.openai.com/api-keys)
+2. **Open ScreenAsk** and go to **Settings**
+3. **Enter your API key** in the **OpenAI Configuration** section
+4. **Configure your preferences** using the settings below
+5. **Click Save**
+
+### OpenAI Configuration
+- **API Key**: Your OpenAI API key
+- **Model**: AI model to use (default: gpt-4o)
+- **Max Tokens**: Maximum response length
 
 ### Hotkey Configuration
+- **Record Hotkey**: Global hotkey combination for capture/recording
+- **Stop Speaking Hotkey**: Hotkey to stop TTS immediately
 
-- Default hotkey: `Ctrl+Shift+S`
-- Change in Settings → Hotkey Configuration
-- Available combinations:
-  - `Ctrl+Shift+S`
-  - `Ctrl+Alt+S`
-  - `Ctrl+Shift+A`
-  - `Alt+Shift+S`
+### Audio Configuration
+- **Enable Recording**: Toggle push-to-talk audio recording
+- **Language**: Speech recognition language
+- **Transcription Service**: Google Speech Recognition or OpenAI Whisper
+
+### Text-to-Speech
+- **Speech Rate**: How fast to speak responses
+- **Volume**: TTS volume level
+- **TTS Engine**: Auto, Local (pyttsx3), or Google TTS
+
+### Response Configuration
+- **Structured Format**: Always uses JSON response format with POI coordinates
+- **Format**: `{"x": 150, "y": 200, "r": 100, "tx": "Response text"}`
+
+### Circle Overlay Configuration (Experimental)
+- **Enable Overlay**: Show visual circle at POI location
+- **Circle Color**: Customizable color with presets (Green, Red, Blue, Yellow, Magenta, Cyan)
+- **Transparency**: Alpha from 0.1 (very transparent) to 1.0 (opaque)
+- **Duration**: Display time from 1.0 to 10.0 seconds
+- **Animation**: Pulse, Fade, Grow, or Static
+
+### Prompt Configuration
+- **System Prompt**: Base AI behavior instructions
+- **Prepend Prompt**: Text added before user questions
+- **Append Prompt**: Text added after user questions
 
 ## Usage
 
@@ -114,6 +142,37 @@ This project uses a virtual environment to:
 3. **Use the hotkey**: Press your configured hotkey (default: `Ctrl+Shift+S`)
 4. **Speak your question**: When prompted, speak your question clearly
 5. **Listen to the response**: The AI will analyze the screenshot and speak the response
+
+### Advanced Features
+
+#### Structured Responses
+ScreenAsk always uses structured responses with POI coordinates for integration with other applications:
+- **Returns JSON format**: `{"x": 150, "y": 200, "r": 100, "tx": "Response text"}`
+- **Point of Interest data**: X,Y coordinates of relevant screen elements
+- **Radius information**: Size of the area for highlighting or animations
+- **Extractable text**: Separate text content for TTS or processing
+
+#### Circle Overlay (Experimental)
+Enable visual feedback in Settings → Circle Overlay Configuration:
+- **Visual confirmation**: See where the AI is "looking" on your screen
+- **Customizable appearance**: Choose colors, transparency, and animations
+- **Automatic positioning**: Circle appears at AI-detected points of interest
+- **Timed display**: Configurable duration from 1-10 seconds
+
+#### Integration with External Applications
+Access POI data programmatically:
+```python
+# Get current POI data
+poi_data = app.get_current_poi_data()
+if poi_data:
+    x, y = poi_data['x'], poi_data['y']
+    radius = poi_data['radius']
+    text = poi_data['text']
+    
+    # Use for animations, highlighting, or other integrations
+    draw_notification_circle(x, y, radius)
+    speak_text(text)
+```
 
 ### Virtual Environment Management
 
@@ -143,19 +202,38 @@ This project uses a virtual environment to:
 
 ### OpenAI Configuration
 - **API Key**: Your OpenAI API key
-- **Model**: AI model to use (default: gpt-4-vision-preview)
+- **Model**: AI model to use (default: gpt-4o)
 - **Max Tokens**: Maximum response length
 
 ### Hotkey Configuration
-- **Hotkey**: Global hotkey combination
+- **Record Hotkey**: Global hotkey combination for capture/recording
+- **Stop Speaking Hotkey**: Hotkey to stop TTS immediately
 
 ### Audio Configuration
-- **Record Duration**: How long to record audio (1-30 seconds)
+- **Enable Recording**: Toggle push-to-talk audio recording
 - **Language**: Speech recognition language
+- **Transcription Service**: Google Speech Recognition or OpenAI Whisper
 
 ### Text-to-Speech
 - **Speech Rate**: How fast to speak responses
 - **Volume**: TTS volume level
+- **TTS Engine**: Auto, Local (pyttsx3), or Google TTS
+
+### Response Configuration
+- **Structured Format**: Enable JSON response format with POI coordinates
+- **Format**: `{"x": 150, "y": 200, "r": 100, "tx": "Response text"}`
+
+### Circle Overlay Configuration (Experimental)
+- **Enable Overlay**: Show visual circle at POI location
+- **Circle Color**: Customizable color with presets (Green, Red, Blue, Yellow, Magenta, Cyan)
+- **Transparency**: Alpha from 0.1 (very transparent) to 1.0 (opaque)
+- **Duration**: Display time from 1.0 to 10.0 seconds
+- **Animation**: Pulse, Fade, Grow, or Static
+
+### Prompt Configuration
+- **System Prompt**: Base AI behavior instructions
+- **Prepend Prompt**: Text added before user questions
+- **Append Prompt**: Text added after user questions
 
 ## Troubleshooting
 
@@ -176,6 +254,15 @@ This project uses a virtual environment to:
 5. **"Audio recording failed"**
    - Solution: Check microphone permissions, ensure microphone is connected
 
+6. **"Circle overlay not showing"**
+   - Solution: Enable "Circle overlay" in settings (structured format is always enabled)
+
+7. **"Structured response format not working"**
+   - Solution: Check console for JSON parsing errors, verify OpenAI API key is configured (structured format is always enabled)
+
+8. **"Invalid JSON response from AI"**
+   - Solution: The AI occasionally returns malformed JSON; check console for detailed error messages
+
 ### System Requirements
 
 - **Microphone**: Required for voice input
@@ -195,6 +282,8 @@ ScreenAsk/
 ├── audio_handler.py           # Audio recording and transcription
 ├── openai_handler.py          # OpenAI API integration
 ├── tts_handler.py             # Text-to-speech functionality
+├── poi_handler.py             # Point of Interest data management
+├── circle_overlay.py          # Visual circle overlay system
 ├── create_icon.py             # Icon generation script
 ├── requirements.txt           # Python dependencies
 ├── setup.py                   # Setup script with venv
@@ -202,6 +291,7 @@ ScreenAsk/
 ├── run_screenask_venv.ps1     # PowerShell runner (created by setup)
 ├── run_screenask.bat          # Simple batch runner (legacy)
 ├── README.md                  # This file
+├── STRUCTURED_RESPONSE_README.md  # Structured response documentation
 ├── settings.ini               # Configuration file (created automatically)
 ├── venv/                      # Virtual environment (created by setup)
 └── Icons/                     # Application icons (created by setup)
@@ -247,8 +337,18 @@ For issues or questions:
 1. Check the troubleshooting section
 2. Review the configuration settings
 3. Ensure all dependencies are installed correctly
+4. See [STRUCTURED_RESPONSE_README.md](STRUCTURED_RESPONSE_README.md) for detailed information about structured responses and circle overlays
 
 ## Version History
+
+- **v1.1.0**: Enhanced with Structured Responses and Visual Feedback
+  - Structured JSON response format with POI coordinates
+  - Visual circle overlay system with animations
+  - Point of Interest (POI) data management
+  - Configurable circle colors, transparency, and animations
+  - External application integration support
+  - Enhanced settings UI with new configuration sections
+  - Improved OpenAI response parsing with markdown support
 
 - **v1.0.0**: Initial release with core functionality
   - Screenshot capture

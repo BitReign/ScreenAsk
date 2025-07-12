@@ -95,8 +95,23 @@ class TrayHandler:
             self.main_app.quit()
     
     def on_double_click(self, icon, item):
-        """Handle double click on tray icon"""
-        self.show_main_window()
+        """Handle double click on tray icon - toggle main window visibility"""
+        if self.main_app and self.main_app.main_gui and self.main_app.main_gui.root:
+            try:
+                # Check if window is currently visible
+                if self.main_app.main_gui.root.state() == 'normal':
+                    # Window is visible, hide it
+                    self.main_app.main_gui.hide_to_tray()
+                else:
+                    # Window is hidden, show it
+                    self.main_app.main_gui.show_window()
+            except Exception as e:
+                print(f"Error toggling window visibility: {e}")
+                # Fallback to showing the window
+                self.show_main_window()
+        else:
+            # Fallback to showing the window
+            self.show_main_window()
     
     def start_tray(self):
         """Start the system tray in a separate thread"""
