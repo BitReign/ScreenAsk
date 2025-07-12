@@ -1,6 +1,18 @@
-import pyaudio
+try:
+    import pyaudio
+    PYAUDIO_AVAILABLE = True
+except ImportError:
+    PYAUDIO_AVAILABLE = False
+    print("Warning: PyAudio not available - some audio features may not work")
+
 import wave
-import speech_recognition as sr
+try:
+    import speech_recognition as sr
+    SPEECH_RECOGNITION_AVAILABLE = True
+except ImportError:
+    SPEECH_RECOGNITION_AVAILABLE = False
+    print("Warning: SpeechRecognition not available - voice input disabled")
+
 import threading
 import time
 import os
@@ -11,14 +23,30 @@ class AudioHandler:
         self.config = Config()
         self.recording = False
         self.frames = []
-        self.recognizer = sr.Recognizer()
-        self.microphone = sr.Microphone()
+        
+        # Initialize speech recognition if available
+        if SPEECH_RECOGNITION_AVAILABLE:
+            self.recognizer = sr.Recognizer()
+            if PYAUDIO_AVAILABLE:
+                self.microphone = sr.Microphone()
+            else:
+                self.microphone = None
+        else:
+            self.recognizer = None
+            self.microphone = None
         
         # Audio recording settings
-        self.format = pyaudio.paInt16
-        self.channels = 1
-        self.rate = 44100
-        self.chunk = 1024
+        if PYAUDIO_AVAILABLE:
+            self.format = pyaudio.paInt16
+            self.channels = 1
+            self.rate = 44100
+            self.chunk = 1024
+        else:
+            self.format = None
+            self.channels = 1
+            self.rate = 44100
+            self.chunk = 1024
+            
         self.record_duration = int(self.config.get('Audio', 'record_duration', '5'))
         
         # Calibrate microphone for ambient noise
@@ -26,6 +54,10 @@ class AudioHandler:
     
     def calibrate_microphone(self):
         """Calibrate microphone for ambient noise"""
+        if not SPEECH_RECOGNITION_AVAILABLE or not PYAUDIO_AVAILABLE or not self.microphone:
+            print("Audio recording not available - skipping microphone calibration")
+            return
+            
         try:
             with self.microphone as source:
                 print("Calibrating microphone for ambient noise...")
@@ -36,6 +68,10 @@ class AudioHandler:
     
     def start_recording(self):
         """Start recording audio"""
+        if not PYAUDIO_AVAILABLE:
+            print("PyAudio not available - cannot record audio")
+            return False
+            
         try:
             self.recording = True
             self.frames = []
@@ -71,6 +107,10 @@ class AudioHandler:
     
     def save_recording(self, filename="temp_recording.wav"):
         """Save recorded audio to file"""
+        if not PYAUDIO_AVAILABLE:
+            print("PyAudio not available - cannot save recording")
+            return None
+            
         try:
             audio = pyaudio.PyAudio()
             wf = wave.open(filename, 'wb')
@@ -87,6 +127,10 @@ class AudioHandler:
     
     def transcribe_audio(self, filename="temp_recording.wav"):
         """Transcribe audio file to text"""
+        if not SPEECH_RECOGNITION_AVAILABLE:
+            print("Speech recognition not available - cannot transcribe audio")
+            return None
+            
         try:
             with sr.AudioFile(filename) as source:
                 audio = self.recognizer.record(source)
@@ -118,6 +162,10 @@ class AudioHandler:
     
     def listen_for_speech(self, timeout=5):
         """Listen for speech using microphone directly"""
+        if not SPEECH_RECOGNITION_AVAILABLE or not PYAUDIO_AVAILABLE or not self.microphone:
+            print("Audio recording not available - cannot listen for speech")
+            return None
+            
         try:
             with self.microphone as source:
                 print("Listening for speech...")

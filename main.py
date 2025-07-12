@@ -149,6 +149,10 @@ class ScreenAskApp:
         if self.hotkey_handler:
             self.hotkey_handler.update_hotkey()
             self.tray_handler.set_tooltip("ScreenAsk - Press {} to capture".format(self.config.get_hotkey()))
+        
+        # Also reload OpenAI configuration
+        if self.openai_handler:
+            self.openai_handler.setup_client()
     
     def quit(self):
         """Quit the application"""

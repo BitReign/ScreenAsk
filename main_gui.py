@@ -145,9 +145,9 @@ class MainGUI:
         self.api_key_entry.insert(0, self.config.get_openai_key())
         
         ttk.Label(openai_frame, text="Model:").grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
-        self.model_var = tk.StringVar(value=self.config.get('OpenAI', 'model', 'gpt-4-vision-preview'))
+        self.model_var = tk.StringVar(value=self.config.get('OpenAI', 'model', 'gpt-4o'))
         model_combo = ttk.Combobox(openai_frame, textvariable=self.model_var, 
-                                  values=["gpt-4-vision-preview", "gpt-4", "gpt-3.5-turbo"])
+                                  values=["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"])
         model_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
         
         row += 1
@@ -227,12 +227,15 @@ class MainGUI:
         self.config.set('TTS', 'rate', self.rate_var.get())
         self.config.set('TTS', 'volume', self.volume_var.get())
         
-        # Update handlers
+        # Update handlers with fresh config
         self.openai_handler.setup_client()
         self.tts_handler.setup_voice()
         
-        # Update main app
+        # Update main app components
         if self.main_app:
+            # Reload config for all handlers
+            self.main_app.config.load_config()
+            self.main_app.openai_handler.setup_client()
             self.main_app.update_hotkey()
         
         # Update status

@@ -19,9 +19,17 @@ ScreenAsk is a Windows background application that captures screenshots and anal
 - Microphone for voice input
 - Internet connection
 
+### Why Virtual Environment?
+
+This project uses a virtual environment to:
+- Isolate dependencies from your system Python
+- Prevent conflicts with other Python projects
+- Ensure consistent package versions
+- Make installation and cleanup easier
+
 ## Installation
 
-### Method 1: Automatic Setup (Recommended)
+### Method 1: Automatic Setup with Virtual Environment (Recommended)
 
 1. **Download or clone this repository**
 2. **Run the setup script**:
@@ -29,8 +37,41 @@ ScreenAsk is a Windows background application that captures screenshots and anal
    python setup.py
    ```
 3. **Follow the on-screen instructions**
+4. **Run the application**:
+   ```bash
+   # Option 1: Double-click run_screenask_venv.bat
+   # Option 2: Run in PowerShell
+   .\run_screenask_venv.ps1
+   # Option 3: Manual
+   venv\Scripts\python.exe main.py
+   ```
 
-### Method 2: Manual Installation
+### Method 2: Manual Installation with Virtual Environment
+
+1. **Create virtual environment**:
+   ```bash
+   python -m venv venv
+   ```
+
+2. **Activate virtual environment**:
+   ```bash
+   # Windows
+   venv\Scripts\activate
+   # Linux/Mac
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the application**:
+   ```bash
+   python main.py
+   ```
+
+### Method 3: System-wide Installation (Not Recommended)
 
 1. **Install Python dependencies**:
    ```bash
@@ -65,11 +106,21 @@ ScreenAsk is a Windows background application that captures screenshots and anal
 
 ### Basic Usage
 
-1. **Start the application**: Run `python main.py`
+1. **Start the application**: 
+   - Double-click `run_screenask_venv.bat`, or
+   - Run `venv\Scripts\python.exe main.py`, or
+   - Activate venv first: `venv\Scripts\activate` then `python main.py`
 2. **Configure settings**: Set your OpenAI API key and preferences
 3. **Use the hotkey**: Press your configured hotkey (default: `Ctrl+Shift+S`)
 4. **Speak your question**: When prompted, speak your question clearly
 5. **Listen to the response**: The AI will analyze the screenshot and speak the response
+
+### Virtual Environment Management
+
+- **Activate**: `venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Linux/Mac)
+- **Deactivate**: `deactivate` (when virtual environment is active)
+- **Update packages**: `pip install --upgrade -r requirements.txt`
+- **Remove environment**: Delete the `venv` folder
 
 ### System Tray
 
@@ -135,19 +186,28 @@ ScreenAsk is a Windows background application that captures screenshots and anal
 
 ```
 ScreenAsk/
-├── main.py                 # Main application entry point
-├── config.py              # Configuration management
-├── tray_handler.py        # System tray functionality
-├── main_gui.py            # Main GUI window
-├── hotkey_handler.py      # Global hotkey detection
-├── screenshot_handler.py  # Screenshot capture
-├── audio_handler.py       # Audio recording and transcription
-├── openai_handler.py      # OpenAI API integration
-├── tts_handler.py         # Text-to-speech functionality
-├── requirements.txt       # Python dependencies
-├── setup.py              # Setup script
-├── README.md             # This file
-└── settings.ini          # Configuration file (created automatically)
+├── main.py                    # Main application entry point
+├── config.py                  # Configuration management
+├── tray_handler.py            # System tray functionality
+├── main_gui.py                # Main GUI window
+├── hotkey_handler.py          # Global hotkey detection
+├── screenshot_handler.py      # Screenshot capture
+├── audio_handler.py           # Audio recording and transcription
+├── openai_handler.py          # OpenAI API integration
+├── tts_handler.py             # Text-to-speech functionality
+├── create_icon.py             # Icon generation script
+├── requirements.txt           # Python dependencies
+├── setup.py                   # Setup script with venv
+├── run_screenask_venv.bat     # Windows batch runner (created by setup)
+├── run_screenask_venv.ps1     # PowerShell runner (created by setup)
+├── run_screenask.bat          # Simple batch runner (legacy)
+├── README.md                  # This file
+├── settings.ini               # Configuration file (created automatically)
+├── venv/                      # Virtual environment (created by setup)
+└── Icons/                     # Application icons (created by setup)
+    ├── screenask_icon.png
+    ├── screenask_icon.ico
+    └── tray_icon.png
 ```
 
 ## Security and Privacy

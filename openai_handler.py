@@ -10,11 +10,20 @@ class OpenAIHandler:
     
     def setup_client(self):
         """Setup OpenAI client"""
+        # Reload config to get latest settings
+        self.config.load_config()
         api_key = self.config.get_openai_key()
-        if api_key:
-            self.client = openai.OpenAI(api_key=api_key)
+        
+        if api_key and api_key.strip():
+            try:
+                self.client = openai.OpenAI(api_key=api_key.strip())
+                print("✓ OpenAI client configured successfully")
+            except Exception as e:
+                print(f"Error setting up OpenAI client: {e}")
+                self.client = None
         else:
             print("OpenAI API key not found. Please set it in settings.")
+            self.client = None
     
     def set_api_key(self, api_key):
         """Set OpenAI API key"""
