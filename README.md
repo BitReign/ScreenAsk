@@ -70,7 +70,7 @@ python main.py
 2. **Configure**: Add your OpenAI API key in Settings
 3. **Capture**: Press `Ctrl+Shift+S` (hold and speak your question)
 4. **Analysis**: AI analyzes the screenshot and speaks the response
-5. **System Tray**: Double-click tray icon to show/hide main window
+5. **System Tray**: Right-click tray icon to show the menu
 
 ## Configuration
 
