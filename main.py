@@ -32,6 +32,9 @@ class ScreenAskApp:
         # Processing flag to prevent multiple simultaneous captures
         self.processing = False
         
+        # Store current screenshot for processing
+        self.current_screenshot = None
+        
     def start(self):
         """Start the application"""
         self.running = True
@@ -48,10 +51,19 @@ class ScreenAskApp:
         self.hotkey_handler.start_listening()
         
         # Set initial tray tooltip
-        self.tray_handler.set_tooltip("ScreenAsk - Press {} to capture".format(self.config.get_hotkey()))
+        if self.config.get_audio_recording_enabled():
+            self.tray_handler.set_tooltip("ScreenAsk - Hold {} to record, {} to stop speaking".format(
+                self.config.get_hotkey(), self.config.get_stop_speaking_hotkey()))
+        else:
+            self.tray_handler.set_tooltip("ScreenAsk - Press {} to analyze screen, {} to stop speaking".format(
+                self.config.get_hotkey(), self.config.get_stop_speaking_hotkey()))
         
         print("ScreenAsk started successfully!")
         print(f"Hotkey: {self.config.get_hotkey()}")
+        
+        # Set initial status
+        if self.main_gui:
+            self.main_gui.set_status_ready()
         
         # Check if OpenAI is configured
         if not self.openai_handler.is_configured():
@@ -63,19 +75,32 @@ class ScreenAskApp:
         except KeyboardInterrupt:
             self.quit()
     
-    def handle_hotkey(self):
-        """Handle hotkey press - main functionality"""
+    def handle_hotkey_press(self):
+        """Handle hotkey press - start recording"""
         if self.processing:
-            print("Already processing, ignoring hotkey")
+            print("Already processing, ignoring hotkey press")
             return
             
         self.processing = True
         
         try:
-            print("Hotkey triggered - starting capture process...")
+            # Check if audio recording is enabled
+            audio_enabled = self.config.get_audio_recording_enabled()
             
-            # Show notification
-            self.tray_handler.notify("ScreenAsk", "Capturing screenshot and listening for audio...")
+            if audio_enabled:
+                print("Hotkey pressed - starting capture and recording...")
+                # Update status to recording
+                if self.main_gui:
+                    self.main_gui.set_status_recording()
+                # Show notification
+                self.tray_handler.notify("ScreenAsk", "Hold key and speak your question...")
+            else:
+                print("Hotkey pressed - capturing screenshot (audio disabled)...")
+                # Update status to processing since we'll process immediately
+                if self.main_gui:
+                    self.main_gui.set_status_processing()
+                # Show notification
+                self.tray_handler.notify("ScreenAsk", "Analyzing screenshot...")
             
             # Step 1: Capture screenshot
             print("Capturing screenshot...")
@@ -83,53 +108,152 @@ class ScreenAskApp:
             
             if not screenshot_base64:
                 self.tray_handler.notify("ScreenAsk", "Failed to capture screenshot")
+                if self.main_gui:
+                    self.main_gui.set_status_ready()
+                self.processing = False
                 return
             
             print("Screenshot captured successfully")
             
-            # Step 2: Record audio
-            print("Recording audio...")
-            self.tray_handler.notify("ScreenAsk", "Say your question now...")
+            # Store screenshot for processing
+            self.current_screenshot = screenshot_base64
             
-            # Use the direct listening method for real-time audio
-            user_text = self.audio_handler.listen_for_speech(timeout=10)
-            
-            if not user_text:
-                print("No audio detected or transcription failed")
-                user_text = None
+            if audio_enabled:
+                # Step 2: Start recording audio
+                print("Starting audio recording...")
+                self.audio_handler.start_recording()
             else:
-                print(f"Transcribed text: {user_text}")
-            
-            # Step 3: Send to OpenAI
-            print("Sending to OpenAI...")
-            self.tray_handler.notify("ScreenAsk", "Analyzing with AI...")
-            
-            if not self.openai_handler.is_configured():
-                self.tray_handler.notify("ScreenAsk", "OpenAI API not configured")
-                return
-            
-            response = self.openai_handler.analyze_screenshot_with_text(screenshot_base64, user_text)
-            
-            if response.startswith("Error"):
-                print(f"OpenAI error: {response}")
-                self.tray_handler.notify("ScreenAsk", "AI analysis failed")
-                return
-            
-            print(f"OpenAI response: {response}")
-            
-            # Step 4: Speak the response
-            print("Speaking response...")
-            self.tray_handler.notify("ScreenAsk", "Speaking response...")
-            
-            self.tts_handler.speak(response, blocking=False)
-            
-            print("Process completed successfully!")
+                # Process immediately without audio
+                print("Processing without audio recording...")
+                self._process_screenshot_only()
             
         except Exception as e:
-            print(f"Error in hotkey handler: {e}")
+            print(f"Error in hotkey press handler: {e}")
             self.tray_handler.notify("ScreenAsk", f"Error: {str(e)}")
+            if self.main_gui:
+                self.main_gui.set_status_ready()
+            self.processing = False
+    
+    def handle_hotkey_release(self):
+        """Handle hotkey release - stop recording and process"""
+        if not self.processing:
+            print("Not currently processing, ignoring hotkey release")
+            return
+        
+        # Check if audio recording is enabled
+        audio_enabled = self.config.get_audio_recording_enabled()
+        
+        if not audio_enabled:
+            print("Audio disabled - hotkey release ignored")
+            return
+        
+        try:
+            print("Hotkey released - stopping recording and processing...")
+            
+            # Step 1: Stop recording
+            print("Stopping audio recording...")
+            if self.main_gui:
+                self.main_gui.set_status_processing()
+            self.audio_handler.stop_recording()
+            
+            # Step 2: Process the recorded audio
+            print("Processing recorded audio...")
+            self.tray_handler.notify("ScreenAsk", "Processing your question...")
+            
+            # Save and transcribe the audio
+            filename = self.audio_handler.save_recording()
+            user_text = None
+            
+            if filename:
+                user_text = self.audio_handler.transcribe_audio(filename)
+                
+                if not user_text:
+                    print("No audio detected or transcription failed")
+                    user_text = None
+                else:
+                    print(f"Transcribed text: {user_text}")
+            
+            # Step 3: Send to OpenAI with audio text
+            self._process_with_openai(user_text)
+            
+        except Exception as e:
+            print(f"Error in hotkey release handler: {e}")
+            self.tray_handler.notify("ScreenAsk", f"Error: {str(e)}")
+            if self.main_gui:
+                self.main_gui.set_status_ready()
         finally:
             self.processing = False
+            self.current_screenshot = None
+    
+    def _process_screenshot_only(self):
+        """Process screenshot without audio recording"""
+        try:
+            # Process immediately without user audio text
+            self._process_with_openai(None)
+        except Exception as e:
+            print(f"Error in screenshot-only processing: {e}")
+            self.tray_handler.notify("ScreenAsk", f"Error: {str(e)}")
+            if self.main_gui:
+                self.main_gui.set_status_ready()
+        finally:
+            self.processing = False
+            self.current_screenshot = None
+    
+    def _process_with_openai(self, user_text):
+        """Send to OpenAI and handle response"""
+        print("Sending to OpenAI...")
+        if self.main_gui:
+            self.main_gui.set_status_analyzing()
+        self.tray_handler.notify("ScreenAsk", "Analyzing with AI...")
+        
+        if not self.openai_handler.is_configured():
+            self.tray_handler.notify("ScreenAsk", "OpenAI API not configured")
+            if self.main_gui:
+                self.main_gui.set_status_ready()
+            return
+        
+        response = self.openai_handler.analyze_screenshot_with_text(self.current_screenshot, user_text)
+        
+        if response.startswith("Error"):
+            print(f"OpenAI error: {response}")
+            self.tray_handler.notify("ScreenAsk", "AI analysis failed")
+            if self.main_gui:
+                self.main_gui.set_status_ready()
+            return
+        
+        print(f"OpenAI response: {response}")
+        
+        # Speak the response
+        print("Speaking response...")
+        if self.main_gui:
+            self.main_gui.set_status_speaking()
+        self.tray_handler.notify("ScreenAsk", "Speaking response...")
+        
+        self.tts_handler.speak(response, blocking=False)
+        
+        # Set status back to ready after a short delay
+        import time
+        threading.Timer(2.0, lambda: self.main_gui.set_status_ready() if self.main_gui else None).start()
+        
+        print("Process completed successfully!")
+    
+    def handle_stop_speaking(self):
+        """Handle stop speaking hotkey - stop TTS immediately"""
+        try:
+            print("Stop speaking hotkey pressed - stopping TTS...")
+            if self.tts_handler:
+                self.tts_handler.stop()
+                print("TTS stopped successfully")
+                
+                # Update status back to ready
+                if self.main_gui:
+                    self.main_gui.set_status_ready()
+                
+                # Show notification
+                self.tray_handler.notify("ScreenAsk", "Speech stopped")
+                
+        except Exception as e:
+            print(f"Error stopping TTS: {e}")
     
     def show_main_window(self):
         """Show the main application window"""
@@ -148,7 +272,12 @@ class ScreenAskApp:
         """Update hotkey configuration"""
         if self.hotkey_handler:
             self.hotkey_handler.update_hotkey()
-            self.tray_handler.set_tooltip("ScreenAsk - Press {} to capture".format(self.config.get_hotkey()))
+            if self.config.get_audio_recording_enabled():
+                self.tray_handler.set_tooltip("ScreenAsk - Hold {} to record, {} to stop speaking".format(
+                    self.config.get_hotkey(), self.config.get_stop_speaking_hotkey()))
+            else:
+                self.tray_handler.set_tooltip("ScreenAsk - Press {} to analyze screen, {} to stop speaking".format(
+                    self.config.get_hotkey(), self.config.get_stop_speaking_hotkey()))
         
         # Also reload OpenAI configuration
         if self.openai_handler:

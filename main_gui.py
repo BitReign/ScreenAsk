@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import threading
+import time
 from config import Config
 from openai_handler import OpenAIHandler
 from tts_handler import TTSHandler
@@ -50,9 +51,19 @@ class MainGUI:
         self.openai_status.grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
         
         # Current hotkey
-        ttk.Label(status_frame, text="Hotkey:").grid(row=1, column=0, sticky=tk.W)
+        ttk.Label(status_frame, text="Record Hotkey:").grid(row=1, column=0, sticky=tk.W)
         self.hotkey_label = ttk.Label(status_frame, text=self.config.get_hotkey())
         self.hotkey_label.grid(row=1, column=1, sticky=tk.W, padx=(10, 0))
+        
+        # Stop speaking hotkey
+        ttk.Label(status_frame, text="Stop Speaking:").grid(row=2, column=0, sticky=tk.W)
+        self.stop_hotkey_label = ttk.Label(status_frame, text=self.config.get_stop_speaking_hotkey())
+        self.stop_hotkey_label.grid(row=2, column=1, sticky=tk.W, padx=(10, 0))
+        
+        # Recording/Processing Status
+        ttk.Label(status_frame, text="Status:").grid(row=3, column=0, sticky=tk.W)
+        self.recording_status = ttk.Label(status_frame, text="Ready", foreground="green")
+        self.recording_status.grid(row=3, column=1, sticky=tk.W, padx=(10, 0))
         
         # Buttons section
         button_frame = ttk.Frame(main_frame)
@@ -87,19 +98,45 @@ class MainGUI:
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         instructions_text.configure(yscrollcommand=scrollbar.set)
         
-        instructions_text.insert(tk.END, 
-            "Welcome to ScreenAsk!\n\n"
-            "1. Configure your OpenAI API key in Settings\n"
-            "2. Set your preferred hotkey combination\n"
-            "3. Press the hotkey to capture screen and analyze\n"
-            "4. Speak your question when prompted\n"
-            "5. Listen to the AI response\n\n"
-            "Features:\n"
-            "• Screenshot capture with AI analysis\n"
-            "• Voice input transcription\n"
-            "• Text-to-speech responses\n"
-            "• Background operation with tray icon\n\n"
-            "The app runs in the background. Right-click the tray icon for options.")
+        audio_enabled = self.config.get_audio_recording_enabled()
+        
+        if audio_enabled:
+            instructions = (
+                "Welcome to ScreenAsk!\n\n"
+                "1. Configure your OpenAI API key in Settings\n"
+                "2. Set your preferred hotkey combination\n"
+                "3. Hold the hotkey to capture screen and record audio\n"
+                "4. Speak your question while holding the key\n"
+                "5. Release the key to stop recording and get AI response\n"
+                f"6. Press {self.config.get_stop_speaking_hotkey()} to stop AI speaking\n\n"
+                "Features:\n"
+                "• Push-to-talk recording (like walkie-talkies)\n"
+                "• Stop speaking hotkey to interrupt AI responses\n"
+                "• Screenshot capture with AI analysis\n"
+                "• Voice input transcription (Google/OpenAI Whisper)\n"
+                "• Text-to-speech responses\n"
+                "• Background operation with tray icon\n\n"
+                "The app runs in the background. Right-click the tray icon for options."
+            )
+        else:
+            instructions = (
+                "Welcome to ScreenAsk! (Audio Recording Disabled)\n\n"
+                "1. Configure your OpenAI API key in Settings\n"
+                "2. Set your preferred hotkey combination\n"
+                "3. Press the hotkey to capture and analyze screen\n"
+                f"4. Press {self.config.get_stop_speaking_hotkey()} to stop AI speaking\n\n"
+                "Features:\n"
+                "• Visual-only mode (no audio recording)\n"
+                "• Instant screenshot analysis\n"
+                "• Stop speaking hotkey to interrupt AI responses\n"
+                "• Custom AI prompts for analysis\n"
+                "• Text-to-speech responses\n"
+                "• Background operation with tray icon\n\n"
+                "Note: Audio recording is disabled. Enable it in Settings to use voice input.\n"
+                "The app runs in the background. Right-click the tray icon for options."
+            )
+        
+        instructions_text.insert(tk.END, instructions)
         
         instructions_text.configure(state=tk.DISABLED)
         
@@ -117,15 +154,28 @@ class MainGUI:
             
         self.settings_window = tk.Toplevel(self.root)
         self.settings_window.title("Settings")
-        self.settings_window.geometry("600x700")
-        self.settings_window.resizable(False, False)
+        self.settings_window.geometry("600x750")
+        self.settings_window.resizable(True, True)
         
         # Make it modal
         self.settings_window.transient(self.root)
         self.settings_window.grab_set()
         
-        # Settings frame
-        settings_frame = ttk.Frame(self.settings_window, padding="10")
+        # Create canvas and scrollbar for scrolling
+        canvas = tk.Canvas(self.settings_window)
+        scrollbar = ttk.Scrollbar(self.settings_window, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Settings frame inside scrollable area
+        settings_frame = ttk.Frame(scrollable_frame, padding="10")
         settings_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         self.settings_window.columnconfigure(0, weight=1)
@@ -157,11 +207,17 @@ class MainGUI:
         hotkey_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         hotkey_frame.columnconfigure(1, weight=1)
         
-        ttk.Label(hotkey_frame, text="Hotkey:").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(hotkey_frame, text="Record Hotkey:").grid(row=0, column=0, sticky=tk.W)
         self.hotkey_var = tk.StringVar(value=self.config.get_hotkey())
         hotkey_combo = ttk.Combobox(hotkey_frame, textvariable=self.hotkey_var,
                                    values=["ctrl+shift+s", "ctrl+alt+s", "ctrl+shift+a", "alt+shift+s"])
         hotkey_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
+        
+        ttk.Label(hotkey_frame, text="Stop Speaking Hotkey:").grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        self.stop_hotkey_var = tk.StringVar(value=self.config.get_stop_speaking_hotkey())
+        stop_hotkey_combo = ttk.Combobox(hotkey_frame, textvariable=self.stop_hotkey_var,
+                                        values=["ctrl+shift+x", "ctrl+alt+x", "ctrl+shift+z", "alt+shift+x"])
+        stop_hotkey_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
         
         row += 1
         
@@ -170,16 +226,48 @@ class MainGUI:
         audio_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         audio_frame.columnconfigure(1, weight=1)
         
-        ttk.Label(audio_frame, text="Record Duration (s):").grid(row=0, column=0, sticky=tk.W)
-        self.duration_var = tk.StringVar(value=self.config.get('Audio', 'record_duration', '5'))
-        duration_spin = ttk.Spinbox(audio_frame, from_=1, to=30, textvariable=self.duration_var, width=10)
-        duration_spin.grid(row=0, column=1, sticky=tk.W, padx=(10, 0))
+        # Enable/Disable audio recording
+        self.audio_enabled_var = tk.BooleanVar(value=self.config.get_audio_recording_enabled())
+        audio_enabled_check = ttk.Checkbutton(audio_frame, text="Enable audio recording", variable=self.audio_enabled_var)
+        audio_enabled_check.grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
         
-        ttk.Label(audio_frame, text="Language:").grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        # Add push-to-talk info
+        info_label = ttk.Label(audio_frame, text="Push-to-talk: Hold hotkey to record, release to stop", font=('Arial', 9, 'italic'))
+        info_label.grid(row=1, column=0, columnspan=2, pady=(0, 10))
+        
+        ttk.Label(audio_frame, text="Language:").grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
         self.language_var = tk.StringVar(value=self.config.get('Audio', 'language', 'en-US'))
         language_combo = ttk.Combobox(audio_frame, textvariable=self.language_var,
-                                     values=["en-US", "en-GB", "es-ES", "fr-FR", "de-DE", "it-IT", "pt-PT", "ru-RU"])
-        language_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+                                     values=["en-US", "en-GB", "es-ES", "fr-FR", "de-DE", "it-IT", "pt-PT", "ru-RU", "tr-TR"])
+        language_combo.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        
+        ttk.Label(audio_frame, text="Transcription Service:").grid(row=3, column=0, sticky=tk.W, pady=(5, 0))
+        self.transcription_var = tk.StringVar(value=self.config.get('Audio', 'transcription_service', 'google'))
+        transcription_combo = ttk.Combobox(audio_frame, textvariable=self.transcription_var,
+                                          values=["google", "openai_whisper"], state="readonly")
+        transcription_combo.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        
+        # Update combo display values
+        def update_transcription_display(event=None):
+            value = self.transcription_var.get()
+            if value == "google":
+                transcription_combo.set("Google Speech Recognition")
+            elif value == "openai_whisper":
+                transcription_combo.set("OpenAI Whisper")
+        
+        # Set initial display value
+        update_transcription_display()
+        
+        # Handle selection changes
+        def on_transcription_change(event=None):
+            display_value = transcription_combo.get()
+            if display_value == "Google Speech Recognition":
+                self.transcription_var.set("google")
+            elif display_value == "OpenAI Whisper":
+                self.transcription_var.set("openai_whisper")
+        
+        transcription_combo.bind('<<ComboboxSelected>>', on_transcription_change)
+        transcription_combo.configure(values=["Google Speech Recognition", "OpenAI Whisper"])
         
         row += 1
         
@@ -234,18 +322,29 @@ class MainGUI:
         cancel_btn = ttk.Button(button_frame, text="Cancel", command=self.settings_window.destroy)
         cancel_btn.grid(row=0, column=1)
         
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Enable mouse wheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
     def save_settings(self):
         """Save settings to configuration"""
         # Save OpenAI settings
         self.config.set_openai_key(self.api_key_entry.get())
         self.config.set('OpenAI', 'model', self.model_var.get())
         
-        # Save hotkey
+        # Save hotkeys
         self.config.set_hotkey(self.hotkey_var.get())
+        self.config.set_stop_speaking_hotkey(self.stop_hotkey_var.get())
         
         # Save audio settings
-        self.config.set('Audio', 'record_duration', self.duration_var.get())
         self.config.set('Audio', 'language', self.language_var.get())
+        self.config.set('Audio', 'transcription_service', self.transcription_var.get())
+        self.config.set_audio_recording_enabled(self.audio_enabled_var.get())
         
         # Save TTS settings
         self.config.set('TTS', 'rate', self.rate_var.get())
@@ -259,12 +358,14 @@ class MainGUI:
         # Update handlers with fresh config
         self.openai_handler.setup_client()
         self.tts_handler.setup_voice()
+        self.tts_handler.refresh_voice_settings()
         
         # Update main app components
         if self.main_app:
             # Reload config for all handlers
             self.main_app.config.load_config()
             self.main_app.openai_handler.setup_client()
+            self.main_app.tts_handler.refresh_voice_settings()
             self.main_app.update_hotkey()
         
         # Update status
@@ -289,7 +390,17 @@ class MainGUI:
     def test_capture(self):
         """Test screenshot capture"""
         if self.main_app:
-            threading.Thread(target=self.main_app.handle_hotkey, daemon=True).start()
+            # Use the press and release methods for testing
+            threading.Thread(target=self._test_capture_sequence, daemon=True).start()
+    
+    def _test_capture_sequence(self):
+        """Test capture sequence with status updates"""
+        if self.main_app:
+            # Simulate press and immediate release for testing
+            self.main_app.handle_hotkey_press()
+            # Small delay to show recording status
+            time.sleep(0.5)
+            self.main_app.handle_hotkey_release()
             
     def hide_to_tray(self):
         """Hide window to system tray"""
@@ -311,6 +422,38 @@ class MainGUI:
             self.openai_status.config(text="Not configured", foreground="red")
             
         self.hotkey_label.config(text=self.config.get_hotkey())
+        self.stop_hotkey_label.config(text=self.config.get_stop_speaking_hotkey())
+    
+    def update_recording_status(self, status, color="black"):
+        """Update recording/processing status"""
+        if hasattr(self, 'recording_status') and self.recording_status:
+            try:
+                self.recording_status.config(text=status, foreground=color)
+                # Force GUI update
+                if self.root:
+                    self.root.update_idletasks()
+            except Exception as e:
+                print(f"Error updating recording status: {e}")
+    
+    def set_status_ready(self):
+        """Set status to ready"""
+        self.update_recording_status("Ready", "green")
+    
+    def set_status_recording(self):
+        """Set status to recording"""
+        self.update_recording_status("🔴 Recording...", "red")
+    
+    def set_status_processing(self):
+        """Set status to processing"""
+        self.update_recording_status("⚙️ Processing...", "orange")
+    
+    def set_status_analyzing(self):
+        """Set status to analyzing"""
+        self.update_recording_status("🤖 Analyzing...", "blue")
+    
+    def set_status_speaking(self):
+        """Set status to speaking"""
+        self.update_recording_status("🔊 Speaking...", "purple")
         
     def on_closing(self):
         """Handle window closing"""

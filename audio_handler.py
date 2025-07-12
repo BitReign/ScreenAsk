@@ -26,6 +26,7 @@ class AudioHandler:
         self.config = Config()
         self.recording = False
         self.audio_data = None
+        self.recording_stream = None
         
         # Initialize speech recognition if available
         if SPEECH_RECOGNITION_AVAILABLE:
@@ -37,10 +38,12 @@ class AudioHandler:
             self.recognizer = None
             self.microphone = None
         
+        # Initialize OpenAI handler for Whisper (lazy initialization)
+        self.openai_handler = None
+        
         # Audio recording settings
         self.channels = 1
         self.rate = 44100
-        self.record_duration = int(self.config.get('Audio', 'record_duration', '5'))
         
         # Set default input device if available
         if AUDIO_AVAILABLE:
@@ -64,35 +67,70 @@ class AudioHandler:
         print("Skipping microphone calibration (not needed with sounddevice)")
     
     def start_recording(self):
-        """Start recording audio using sounddevice"""
+        """Start continuous recording audio using sounddevice"""
         if not AUDIO_AVAILABLE:
             print("Audio libraries not available - cannot record audio")
             return False
             
         try:
+            if self.recording:
+                print("Already recording, ignoring start request")
+                return False
+                
             self.recording = True
-            print(f"Recording for {self.record_duration} seconds...")
+            self.audio_data = []
             
-            # Record audio using sounddevice
-            self.audio_data = sd.rec(
-                int(self.record_duration * self.rate),
+            print("Starting continuous recording...")
+            
+            # Start recording stream
+            self.recording_stream = sd.InputStream(
                 samplerate=self.rate,
                 channels=self.channels,
-                dtype='int16'
+                dtype='int16',
+                callback=self._recording_callback
             )
+            self.recording_stream.start()
             
-            # Wait for recording to complete
-            sd.wait()
-            
-            print("Recording finished.")
             return True
         except Exception as e:
             print(f"Error during recording: {e}")
+            self.recording = False
             return False
     
+    def _recording_callback(self, indata, frames, time, status):
+        """Callback for continuous recording"""
+        if status:
+            print(f"Recording status: {status}")
+        
+        if self.recording and self.audio_data is not None:
+            self.audio_data.append(indata.copy())
+    
     def stop_recording(self):
-        """Stop recording audio"""
-        self.recording = False
+        """Stop continuous recording audio"""
+        if not self.recording:
+            print("Not currently recording, ignoring stop request")
+            return
+            
+        try:
+            self.recording = False
+            
+            # Stop the recording stream
+            if hasattr(self, 'recording_stream') and self.recording_stream:
+                self.recording_stream.stop()
+                self.recording_stream.close()
+                self.recording_stream = None
+            
+            # Convert collected audio data to numpy array
+            if self.audio_data and len(self.audio_data) > 0:
+                self.audio_data = np.concatenate(self.audio_data, axis=0)
+                print(f"Recording stopped. Captured {len(self.audio_data)} samples.")
+            else:
+                print("Recording stopped. No audio data captured.")
+                self.audio_data = None
+                
+        except Exception as e:
+            print(f"Error stopping recording: {e}")
+            self.recording = False
     
     def save_recording(self, filename="temp_recording.wav"):
         """Save recorded audio to file"""
@@ -101,8 +139,14 @@ class AudioHandler:
             return None
             
         try:
+            # Check if we have valid audio data
+            if len(self.audio_data) == 0:
+                print("No audio data to save")
+                return None
+                
             # Save using soundfile
             sf.write(filename, self.audio_data, self.rate)
+            print(f"Audio saved to {filename}")
             return filename
         except Exception as e:
             print(f"Error saving recording: {e}")
@@ -110,6 +154,17 @@ class AudioHandler:
     
     def transcribe_audio(self, filename="temp_recording.wav"):
         """Transcribe audio file to text"""
+        # Reload config to get latest settings
+        self.config.load_config()
+        transcription_service = self.config.get('Audio', 'transcription_service', 'google')
+        
+        if transcription_service == 'openai_whisper':
+            return self.transcribe_with_whisper(filename)
+        else:
+            return self.transcribe_with_google(filename)
+    
+    def transcribe_with_google(self, filename="temp_recording.wav"):
+        """Transcribe audio file using Google Speech Recognition"""
         if not SPEECH_RECOGNITION_AVAILABLE:
             print("Speech recognition not available - cannot transcribe audio")
             return None
@@ -127,6 +182,41 @@ class AudioHandler:
             return None
         except Exception as e:
             print(f"Error transcribing audio: {e}")
+            return None
+    
+    def transcribe_with_whisper(self, filename="temp_recording.wav"):
+        """Transcribe audio file using OpenAI Whisper"""
+        # Initialize OpenAI handler if not already done
+        if self.openai_handler is None:
+            try:
+                from openai_handler import OpenAIHandler
+                self.openai_handler = OpenAIHandler()
+            except ImportError as e:
+                print(f"Error importing OpenAI handler: {e}")
+                return None
+        
+        if not self.openai_handler.is_configured():
+            print("OpenAI API not configured - cannot use Whisper")
+            return None
+            
+        try:
+            with open(filename, 'rb') as audio_file:
+                # Convert language code for Whisper (uses 2-letter codes)
+                language_full = self.config.get('Audio', 'language', 'en-US')
+                language_code = language_full[:2].lower()
+                
+                # Ensure Turkish is properly handled
+                if language_full == 'tr-TR':
+                    language_code = 'tr'
+                
+                transcript = self.openai_handler.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    language=language_code
+                )
+                return transcript.text
+        except Exception as e:
+            print(f"Error transcribing audio with Whisper: {e}")
             return None
     
     def record_and_transcribe(self):

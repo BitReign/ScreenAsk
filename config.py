@@ -18,6 +18,7 @@ class Config:
         """Create default configuration"""
         self.config['General'] = {
             'hotkey': 'ctrl+shift+s',
+            'stop_speaking_hotkey': 'ctrl+shift+x',
             'auto_start': 'false'
         }
         
@@ -28,8 +29,9 @@ class Config:
         }
         
         self.config['Audio'] = {
-            'record_duration': '5',
-            'language': 'en-US'
+            'language': 'en-US',
+            'transcription_service': 'google',
+            'enable_recording': 'true'
         }
         
         self.config['TTS'] = {
@@ -75,4 +77,20 @@ class Config:
     
     def set_hotkey(self, hotkey):
         """Set global hotkey combination"""
-        self.set('General', 'hotkey', hotkey) 
+        self.set('General', 'hotkey', hotkey)
+    
+    def get_stop_speaking_hotkey(self):
+        """Get stop speaking hotkey combination"""
+        return self.get('General', 'stop_speaking_hotkey', 'ctrl+shift+x')
+    
+    def set_stop_speaking_hotkey(self, hotkey):
+        """Set stop speaking hotkey combination"""
+        self.set('General', 'stop_speaking_hotkey', hotkey)
+    
+    def get_audio_recording_enabled(self):
+        """Get whether audio recording is enabled"""
+        return self.get('Audio', 'enable_recording', 'true').lower() == 'true'
+    
+    def set_audio_recording_enabled(self, enabled):
+        """Set whether audio recording is enabled"""
+        self.set('Audio', 'enable_recording', 'true' if enabled else 'false') 
