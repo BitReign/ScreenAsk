@@ -108,7 +108,7 @@ tmp/
 logs/
 
 # Screenshots (if you don't want to track them)
-screenshots/
+# screenshots/
 captures/
 temp_recording.wav
 
