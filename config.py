@@ -37,6 +37,12 @@ class Config:
             'volume': '0.8'
         }
         
+        self.config['Prompts'] = {
+            'system_prompt': 'You are a helpful AI assistant that analyzes screenshots and provides clear, concise answers.',
+            'prepend_prompt': '',
+            'append_prompt': 'Please be specific and helpful in your response.'
+        }
+        
         self.save_config()
     
     def save_config(self):

@@ -55,7 +55,7 @@ class TrayHandler:
             pystray.MenuItem("Open", self.show_main_window),
             pystray.MenuItem("Settings", self.show_settings),
             pystray.MenuItem("About", self.show_about),
-            pystray.MenuItem("Separator", pystray.Menu.SEPARATOR),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem("Exit", self.quit_app)
         ]
         

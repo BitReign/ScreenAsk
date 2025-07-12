@@ -117,7 +117,7 @@ class MainGUI:
             
         self.settings_window = tk.Toplevel(self.root)
         self.settings_window.title("Settings")
-        self.settings_window.geometry("400x500")
+        self.settings_window.geometry("600x700")
         self.settings_window.resizable(False, False)
         
         # Make it modal
@@ -200,6 +200,30 @@ class MainGUI:
         
         row += 1
         
+        # Prompt Settings
+        prompt_frame = ttk.LabelFrame(settings_frame, text="Prompt Configuration", padding="10")
+        prompt_frame.grid(row=row, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        prompt_frame.columnconfigure(1, weight=1)
+        
+        ttk.Label(prompt_frame, text="System Prompt:").grid(row=0, column=0, sticky=(tk.W, tk.N), pady=(5, 0))
+        self.system_prompt_text = tk.Text(prompt_frame, height=3, wrap=tk.WORD)
+        self.system_prompt_text.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        self.system_prompt_text.insert(tk.END, self.config.get('Prompts', 'system_prompt', 
+                                                             'You are a helpful AI assistant that analyzes screenshots and provides clear, concise answers.'))
+        
+        ttk.Label(prompt_frame, text="Prepend Prompt:").grid(row=1, column=0, sticky=(tk.W, tk.N), pady=(5, 0))
+        self.prepend_prompt_text = tk.Text(prompt_frame, height=2, wrap=tk.WORD)
+        self.prepend_prompt_text.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        self.prepend_prompt_text.insert(tk.END, self.config.get('Prompts', 'prepend_prompt', ''))
+        
+        ttk.Label(prompt_frame, text="Append Prompt:").grid(row=2, column=0, sticky=(tk.W, tk.N), pady=(5, 0))
+        self.append_prompt_text = tk.Text(prompt_frame, height=2, wrap=tk.WORD)
+        self.append_prompt_text.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=(5, 0))
+        self.append_prompt_text.insert(tk.END, self.config.get('Prompts', 'append_prompt', 
+                                                             'Please be specific and helpful in your response.'))
+        
+        row += 1
+        
         # Buttons
         button_frame = ttk.Frame(settings_frame)
         button_frame.grid(row=row, column=0, columnspan=2, pady=(20, 0))
@@ -226,6 +250,11 @@ class MainGUI:
         # Save TTS settings
         self.config.set('TTS', 'rate', self.rate_var.get())
         self.config.set('TTS', 'volume', self.volume_var.get())
+        
+        # Save prompt settings
+        self.config.set('Prompts', 'system_prompt', self.system_prompt_text.get('1.0', tk.END).strip())
+        self.config.set('Prompts', 'prepend_prompt', self.prepend_prompt_text.get('1.0', tk.END).strip())
+        self.config.set('Prompts', 'append_prompt', self.append_prompt_text.get('1.0', tk.END).strip())
         
         # Update handlers with fresh config
         self.openai_handler.setup_client()
