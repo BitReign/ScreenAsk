@@ -214,7 +214,7 @@ Modified files:
 
 - Windows 10/11 (primary support)
 - Python 3.8+
-- OpenAI API key with GPT-4 Vision access
+- OpenAI API key with GPT-4o access
 - Audio input device (if using voice input)
 - Screen resolution: tested on 2560x1440, supports various resolutions
 

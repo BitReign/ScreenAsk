@@ -1,6 +1,6 @@
 # ScreenAsk - AI-Powered Screen Analyzer
 
-ScreenAsk is a Windows background application that captures screenshots and analyzes them using OpenAI's GPT-4 Vision API, combined with voice input and text-to-speech responses. Features structured response format with point-of-interest coordinates for advanced integrations and visual feedback.
+ScreenAsk is a Windows background application that captures screenshots and analyzes them using OpenAI's GPT-4o multimodal AI, combined with voice input and text-to-speech responses. Features structured response format with point-of-interest coordinates for advanced integrations and visual feedback.
 
 **A fun, experimental side project!** 🎉 Visit us at [sumfx.net](https://sumfx.net)
 
@@ -37,7 +37,7 @@ ScreenAsk/
 
 - 🖥️ **Screenshot Capture**: Capture entire screen with global hotkey
 - 🎤 **Voice Input**: Record and transcribe your questions using speech-to-text
-- 🤖 **AI Analysis**: Analyze screenshots with OpenAI GPT-4 Vision
+- 🤖 **AI Analysis**: Analyze screenshots with OpenAI GPT-4o
 - 🔊 **Text-to-Speech**: Hear responses spoken aloud
 - 📍 **Structured Responses**: Always returns POI coordinates and data in JSON format for integrations
 - 🎯 **Circle Overlay**: Visual feedback with animated circles at points of interest (Experimental)
@@ -399,11 +399,11 @@ For issues or questions:
 - **v1.0.0**: Initial release with core functionality
   - Screenshot capture
   - Voice input transcription
-  - OpenAI GPT-4 Vision integration
+  - OpenAI GPT-4o integration
   - Text-to-speech responses
   - System tray operation
   - Configurable settings
 
 ---
 
-**Note**: This application requires an OpenAI API key and will incur costs based on OpenAI's pricing for GPT-4 Vision API usage. 
+**Note**: This application requires an OpenAI API key and will incur costs based on OpenAI's pricing for GPT-4o API usage. 
