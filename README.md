@@ -223,7 +223,7 @@ ScreenAsk/
 - `Pillow` - Image processing
 - `keyboard` - Global hotkey detection
 - `PyQt5` - GUI framework
-- `pyaudio` - Audio recording
+- `sounddevice` - Audio recording
 - `SpeechRecognition` - Speech-to-text
 - `pyttsx3` - Text-to-speech
 - `openai` - OpenAI API client

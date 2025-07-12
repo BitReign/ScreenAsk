@@ -56,22 +56,7 @@ def install_requirements(venv_path):
     print("Installing required packages in virtual environment...")
     try:
         subprocess.check_call([pip_path, "install", "-r", "requirements.txt"])
-        print("✓ Base requirements installed successfully")
-        
-        # Try to install PyAudio with precompiled wheel
-        print("Installing PyAudio...")
-        try:
-            subprocess.check_call([pip_path, "install", "PyAudio==0.2.11"])
-            print("✓ PyAudio installed successfully")
-        except subprocess.CalledProcessError:
-            print("⚠ PyAudio installation failed - trying alternative method...")
-            try:
-                # Try installing from unofficial wheels
-                subprocess.check_call([pip_path, "install", "https://download.lfd.uci.edu/pythonlibs/archived/PyAudio-0.2.11-cp312-cp312-win_amd64.whl"])
-                print("✓ PyAudio installed from precompiled wheel")
-            except subprocess.CalledProcessError:
-                print("⚠ PyAudio installation failed - the app will work but without audio recording")
-                print("  You can install PyAudio manually later if needed")
+        print("✓ All requirements installed successfully")
         
         return True
     except subprocess.CalledProcessError as e:
