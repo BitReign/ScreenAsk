@@ -43,7 +43,7 @@ ScreenAsk/
 - Windows 10/11
 - Python 3.7+
 - OpenAI API key
-- Microphone
+- Microphone+Speaker
 
 ## Installation Options
 
