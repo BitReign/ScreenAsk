@@ -1,0 +1,44 @@
+[
+  {
+    "sender": "user",
+    "message": "beyaz pencerenin adı ne",
+    "timestamp": 1752327084.7538877,
+    "datetime": "2025-07-12 16:31:24",
+    "metadata": {}
+  },
+  {
+    "sender": "ai",
+    "message": "Beyaz pencerenin adı 'ScreenAsk'.",
+    "timestamp": 1752327088.7853124,
+    "datetime": "2025-07-12 16:31:28",
+    "metadata": {
+      "coordinates": {
+        "x": 960,
+        "y": 360,
+        "radius": 100
+      },
+      "has_circle_overlay": true
+    }
+  },
+  {
+    "sender": "user",
+    "message": "Spotify ikon nerede",
+    "timestamp": 1752327101.7883406,
+    "datetime": "2025-07-12 16:31:41",
+    "metadata": {}
+  },
+  {
+    "sender": "ai",
+    "message": "Spotify ikonu ekranın altındaki görev çubuğunda, yeşil daire şeklinde ve ses dalgaları simgesiyle bulunuyor.",
+    "timestamp": 1752327106.1193326,
+    "datetime": "2025-07-12 16:31:46",
+    "metadata": {
+      "coordinates": {
+        "x": 1240,
+        "y": 1380,
+        "radius": 50
+      },
+      "has_circle_overlay": true
+    }
+  }
+]

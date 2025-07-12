@@ -14,6 +14,7 @@ from openai_handler import OpenAIHandler
 from tts_handler import TTSHandler
 from poi_handler import POIHandler
 from circle_overlay import CircleOverlay
+from chat_history import ChatHistory
 
 class ScreenAskApp:
     def __init__(self):
@@ -27,6 +28,9 @@ class ScreenAskApp:
         self.tts_handler = TTSHandler()
         self.poi_handler = POIHandler()
         self.circle_overlay = CircleOverlay(self.config)
+        
+        # Initialize chat history
+        self.chat_history = ChatHistory()
         
         # Initialize UI components
         self.main_gui = MainGUI(self)
@@ -176,6 +180,11 @@ class ScreenAskApp:
                     user_text = None
                 else:
                     print(f"Transcribed text: {user_text}")
+                    # Add user message to chat history
+                    self.chat_history.add_message('user', user_text)
+                    # Update chat display
+                    if self.main_gui:
+                        self.main_gui.update_chat_display()
             
             # Step 3: Send to OpenAI with audio text
             self._process_with_openai(user_text)
@@ -192,6 +201,12 @@ class ScreenAskApp:
     def _process_screenshot_only(self):
         """Process screenshot without audio recording"""
         try:
+            # Add user message to chat history for screenshot-only mode
+            self.chat_history.add_message('user', '[Screenshot analysis requested]')
+            # Update chat display
+            if self.main_gui:
+                self.main_gui.update_chat_display()
+            
             # Process immediately without user audio text
             self._process_with_openai(None)
         except Exception as e:
@@ -246,6 +261,16 @@ class ScreenAskApp:
         
         print(f"Structured response - POI: ({poi_x}, {poi_y}), Radius: {poi_radius}")
         print(f"Text to speak: {text_response}")
+        
+        # Add AI message to chat history with metadata
+        ai_metadata = {
+            'coordinates': {'x': poi_x, 'y': poi_y, 'radius': poi_radius},
+            'has_circle_overlay': self.config.get_circle_overlay_enabled()
+        }
+        self.chat_history.add_message('ai', text_response, metadata=ai_metadata)
+        # Update chat display
+        if self.main_gui:
+            self.main_gui.update_chat_display()
         
         # Add screen resolution info for debugging
         if self.main_gui and self.main_gui.root:
@@ -403,6 +428,10 @@ class ScreenAskApp:
         """Quit the application"""
         print("Shutting down ScreenAsk...")
         self.running = False
+        
+        # Save chat history before shutdown
+        if self.chat_history:
+            self.chat_history.save_to_file()
         
         # Stop components
         if self.hotkey_handler:

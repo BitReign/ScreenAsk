@@ -19,7 +19,7 @@ class MainGUI:
         """Create the main application window"""
         self.root = tk.Tk()
         self.root.title("ScreenAsk - AI Screen Analyzer")
-        self.root.geometry("500x400")
+        self.root.geometry("900x700")
         self.root.resizable(True, True)
         
         # Configure style
@@ -34,15 +34,59 @@ class MainGUI:
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
+        main_frame.columnconfigure(0, weight=2)  # Make chat area wider
         main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(1, weight=1)
         
         # Title
         title_label = ttk.Label(main_frame, text="ScreenAsk", style='Title.TLabel')
         title_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
         
+        # Create left panel for chat history
+        left_frame = ttk.LabelFrame(main_frame, text="Chat History", padding="10")
+        left_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        left_frame.columnconfigure(0, weight=1)
+        left_frame.rowconfigure(0, weight=1)
+        
+        # Create chat display area
+        self.chat_frame = tk.Frame(left_frame, bg='white', relief='sunken', bd=1)
+        self.chat_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.chat_frame.columnconfigure(0, weight=1)
+        
+        # Create scrollable chat area
+        self.chat_canvas = tk.Canvas(self.chat_frame, bg='white', highlightthickness=0)
+        self.chat_scrollbar = ttk.Scrollbar(self.chat_frame, orient="vertical", command=self.chat_canvas.yview)
+        self.chat_scrollable_frame = ttk.Frame(self.chat_canvas)
+        
+        self.chat_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.chat_canvas.configure(scrollregion=self.chat_canvas.bbox("all"))
+        )
+        
+        self.chat_canvas.create_window((0, 0), window=self.chat_scrollable_frame, anchor="nw")
+        self.chat_canvas.configure(yscrollcommand=self.chat_scrollbar.set)
+        
+        self.chat_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.chat_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # Bind mousewheel to chat canvas
+        def _on_mousewheel(event):
+            self.chat_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        self.chat_canvas.bind("<MouseWheel>", _on_mousewheel)
+        
+        # Clear chat button
+        clear_chat_btn = ttk.Button(left_frame, text="Clear Chat", command=self.clear_chat_history)
+        clear_chat_btn.grid(row=1, column=0, pady=(10, 0), sticky=tk.W)
+        
+        # Create right panel for status and controls
+        right_frame = ttk.Frame(main_frame, padding="10")
+        right_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
+        right_frame.columnconfigure(0, weight=1)
+        
         # Status section
-        status_frame = ttk.LabelFrame(main_frame, text="Status", padding="10")
-        status_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        status_frame = ttk.LabelFrame(right_frame, text="Status", padding="10")
+        status_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         status_frame.columnconfigure(1, weight=1)
         
         # OpenAI API Status
@@ -66,8 +110,8 @@ class MainGUI:
         self.recording_status.grid(row=3, column=1, sticky=tk.W, padx=(10, 0))
         
         # Buttons section
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=2, column=0, columnspan=2, pady=(20, 0))
+        button_frame = ttk.Frame(right_frame)
+        button_frame.grid(row=1, column=0, pady=(20, 0))
         
         # Settings button
         settings_btn = ttk.Button(button_frame, text="Settings", command=self.show_settings)
@@ -86,8 +130,8 @@ class MainGUI:
         hide_btn.grid(row=0, column=3)
         
         # Instructions
-        instructions_frame = ttk.LabelFrame(main_frame, text="Instructions", padding="10")
-        instructions_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(20, 0))
+        instructions_frame = ttk.LabelFrame(right_frame, text="Instructions", padding="10")
+        instructions_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(20, 0))
         instructions_frame.columnconfigure(0, weight=1)
         instructions_frame.rowconfigure(0, weight=1)
         
@@ -142,6 +186,9 @@ class MainGUI:
         
         # Update status
         self.update_status()
+        
+        # Load existing chat history
+        self.load_chat_history()
         
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -713,3 +760,129 @@ class MainGUI:
         """Quit the application"""
         if self.root:
             self.root.destroy() 
+    
+    def load_chat_history(self):
+        """Load and display existing chat history"""
+        try:
+            if self.main_app and hasattr(self.main_app, 'chat_history'):
+                # Load from file if it exists
+                self.main_app.chat_history.load_from_file()
+                # Display all messages
+                messages = self.main_app.chat_history.get_all_messages()
+                for message in messages:
+                    self.add_chat_message(message['sender'], message['message'], message['datetime'])
+        except Exception as e:
+            print(f"Error loading chat history: {e}")
+    
+    def add_chat_message(self, sender, message, timestamp=None):
+        """Add a message to the chat display"""
+        try:
+            # Create message frame
+            message_frame = tk.Frame(self.chat_scrollable_frame)
+            message_frame.pack(fill=tk.X, padx=5, pady=2)
+            
+            # Get current time if not provided
+            if timestamp is None:
+                from datetime import datetime
+                timestamp = datetime.now().strftime('%H:%M:%S')
+            
+            if sender == 'user':
+                # User message (right aligned, blue)
+                msg_frame = tk.Frame(message_frame, bg='#007ACC', relief='raised', bd=1)
+                msg_frame.pack(side=tk.RIGHT, anchor='e', padx=(100, 0))
+                
+                # User label
+                user_label = tk.Label(msg_frame, text=f"You ({timestamp})", 
+                                    bg='#007ACC', fg='white', font=('Arial', 8, 'bold'))
+                user_label.pack(anchor='w', padx=5, pady=(2, 0))
+                
+                # Message text
+                msg_text = tk.Text(msg_frame, wrap=tk.WORD, height=1, width=30,
+                                 bg='#007ACC', fg='white', font=('Arial', 10),
+                                 relief='flat', bd=0, state='normal')
+                msg_text.insert('1.0', message)
+                msg_text.configure(state='disabled')
+                msg_text.pack(padx=5, pady=(0, 5), fill=tk.BOTH, expand=True)
+                
+                # Auto-resize text widget based on content
+                msg_text.update_idletasks()
+                lines = int(msg_text.index('end-1c').split('.')[0])
+                msg_text.configure(height=max(2, min(lines, 8)))
+                
+            else:
+                # AI message (left aligned, green)
+                msg_frame = tk.Frame(message_frame, bg='#28A745', relief='raised', bd=1)
+                msg_frame.pack(side=tk.LEFT, anchor='w', padx=(0, 100))
+                
+                # AI label
+                ai_label = tk.Label(msg_frame, text=f"AI ({timestamp})", 
+                                  bg='#28A745', fg='white', font=('Arial', 8, 'bold'))
+                ai_label.pack(anchor='w', padx=5, pady=(2, 0))
+                
+                # Message text
+                msg_text = tk.Text(msg_frame, wrap=tk.WORD, height=1, width=40,
+                                 bg='#28A745', fg='white', font=('Arial', 10),
+                                 relief='flat', bd=0, state='normal')
+                msg_text.insert('1.0', message)
+                msg_text.configure(state='disabled')
+                msg_text.pack(padx=5, pady=(0, 5), fill=tk.BOTH, expand=True)
+                
+                # Auto-resize text widget based on content
+                msg_text.update_idletasks()
+                lines = int(msg_text.index('end-1c').split('.')[0])
+                msg_text.configure(height=max(2, min(lines, 8)))
+            
+            # Update scroll region and scroll to bottom
+            self.chat_scrollable_frame.update_idletasks()
+            self.chat_canvas.configure(scrollregion=self.chat_canvas.bbox("all"))
+            self.chat_canvas.yview_moveto(1.0)
+            
+        except Exception as e:
+            print(f"Error adding chat message: {e}")
+    
+    def clear_chat_history(self):
+        """Clear all chat history"""
+        try:
+            if self.main_app and hasattr(self.main_app, 'chat_history'):
+                self.main_app.chat_history.clear_history()
+                
+                # Clear the display
+                for widget in self.chat_scrollable_frame.winfo_children():
+                    widget.destroy()
+                
+                # Update scroll region
+                self.chat_canvas.configure(scrollregion=self.chat_canvas.bbox("all"))
+                
+                messagebox.showinfo("Chat History", "Chat history cleared successfully!")
+        except Exception as e:
+            print(f"Error clearing chat history: {e}")
+            messagebox.showerror("Error", f"Failed to clear chat history: {str(e)}")
+    
+    def update_chat_display(self):
+        """Update the chat display with new messages"""
+        try:
+            if self.main_app and hasattr(self.main_app, 'chat_history'):
+                # Get the latest message
+                messages = self.main_app.chat_history.get_all_messages()
+                
+                # Add the most recent message if there are any new ones
+                if messages:
+                    # Get the count of currently displayed messages
+                    current_count = len(self.chat_scrollable_frame.winfo_children())
+                    
+                    # Add any new messages
+                    for i in range(current_count, len(messages)):
+                        message = messages[i]
+                        # Extract just the time from the datetime string
+                        time_part = message['datetime'].split(' ')[1]
+                        self.add_chat_message(message['sender'], message['message'], time_part)
+        except Exception as e:
+            print(f"Error updating chat display: {e}")
+    
+    def save_chat_history(self):
+        """Save chat history to file"""
+        try:
+            if self.main_app and hasattr(self.main_app, 'chat_history'):
+                self.main_app.chat_history.save_to_file()
+        except Exception as e:
+            print(f"Error saving chat history: {e}")

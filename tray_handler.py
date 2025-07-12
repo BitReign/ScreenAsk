@@ -78,12 +78,16 @@ class TrayHandler:
             root.withdraw()  # Hide the main window
             messagebox.showinfo("About ScreenAsk", 
                               "ScreenAsk v1.0\n\n"
-                              "AI-powered screen capture and analysis tool.\n\n"
+                              "AI-powered screen capture and analysis tool.\n"
+                              "A fun, experimental side project! 🎉\n\n"
                               "Features:\n"
                               "- Screenshot capture with hotkey\n"
                               "- Voice input transcription\n"
                               "- AI analysis with OpenAI GPT-4 Vision\n"
-                              "- Text-to-speech responses\n\n"
+                              "- Text-to-speech responses\n"
+                              "- Chat history with visual feedback\n"
+                              "- Experimental circle overlay for POI detection\n\n"
+                              "Visit us at: sumfx.net\n\n"
                               "Press your configured hotkey to capture and analyze!")
             root.destroy()
         except Exception as e:

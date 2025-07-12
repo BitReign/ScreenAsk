@@ -2,6 +2,8 @@
 
 ScreenAsk is a Windows background application that captures screenshots and analyzes them using OpenAI's GPT-4 Vision API, combined with voice input and text-to-speech responses. Features structured response format with point-of-interest coordinates for advanced integrations and visual feedback.
 
+**A fun, experimental side project!** 🎉 Visit us at [sumfx.net](https://sumfx.net)
+
 ## Features
 
 - 🖥️ **Screenshot Capture**: Capture entire screen with global hotkey
